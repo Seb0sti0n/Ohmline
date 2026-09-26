@@ -44,6 +44,32 @@ Migrations live in `backend/migrations` (embedded in the binary and applied by t
 
 If `design/tokens.json` changes, regenerate the Tailwind theme with `cd frontend && npm run tokens`.
 
+## Analysis engine
+
+`backend/internal/engine` is a package of pure functions: `Run(readings, events, cfg) → []AnomalyResult`.
+It has no HTTP or database dependencies, is deterministic and is tested against the real dataset
+(`go test ./internal/engine/...`). All thresholds live in `backend/internal/config/engine.go`.
+
+Pipeline: readings → baseline → detection → correlation → events → explanation → recommendation.
+
+| Step | What it does | Why |
+|---|---|---|
+| Baseline | Median and scaled MAD of consumption, voltage, current and PF **per hour of day**, from the first 7 days | The load has a strong daily pattern, so a single average would flag every morning. Median/MAD are robust to outliers |
+| Consumption detection | Robust z-score per reading; a **persistent change** is ≥ 6 consecutive hours with \|z\| > 4 in the same direction | Isolated 1–2 h spikes are normal noise and never become anomalies |
+| Data quality | Flags voltage outside ±5% of 220 V, voltage jumps > 10 V, PF jumps > 0.2, kWh not matching V·I·PF (±30%). Recurrent = ≥ 5 flagged hours within 24 h, **and** no persistent consumption change | Quality problems are found in the readings. The `status` column is always `OK`, and the event type is never used as a label |
+| Correlation | For each window: Δ current, Δ PF, Δ mean voltage, Δ voltage spread vs baseline | A rise in consumption with a PF drop points to a load or installation problem |
+| Events | An event within 6 h before / 2 h after the window start explains it only if it is **compatible**: an outage must match the described duration and consumption must return to baseline; an operational change must be an upward step without electrical deterioration. `UNKNOWN` never explains. `DATA_QUALITY` only corroborates | Time coincidence alone is not an explanation |
+| Classification | Persistent change + compatible outage → `FALSE_POSITIVE`/LOW · + compatible operational change → `EXPLAINABLE_ANOMALY`/MEDIUM · unexplained → `REAL_ANOMALY`/HIGH · recurrent quality flags with stable consumption → `DATA_QUALITY`/HIGH | Matches the cases in the brief |
+| Priority (0–100) | Magnitude 25 + persistence 15 + electrical deterioration 20 + no explanation 20 + extra kWh 20; `FALSE_POSITIVE` capped below 20 | Ranks what to investigate first. The breakdown is stored in `evidence.priority_breakdown` |
+| Confidence (0–0.99) | 0.40 base + signal strength 0.25 + independent signals 0.20 + explanation clarity 0.10 | Breakdown in `evidence.confidence_breakdown` |
+
+Result on the dataset: M-109 `REAL_ANOMALY` (priority 100) > M-112 `DATA_QUALITY` (71.8) > M-104 `EXPLAINABLE_ANOMALY` (46.6)
+> M-106 `FALSE_POSITIVE` (19). The other 8 meters produce no anomaly. The explanation texts come from
+deterministic templates in Spanish (`explain.go`); an LLM can rewrite them later but never changes the classification.
+
+Limitations: thresholds are tuned to this dataset; the 7-day baseline is short and assumes it contains no
+anomalies (true here); one anomaly is reported per meter (the highest-priority window).
+
 ## Status
 
-Phases 1 (scaffolding) and 2 (data) done. Next: analysis engine, API, LLM layer, frontend.
+Phases 1 (scaffolding), 2 (data) and 3 (analysis engine) done. Next: API, LLM layer, frontend.
