@@ -1,0 +1,300 @@
+openapi: 3.0.3
+info:
+  title: Astrophage API
+  version: 0.1.0
+  description: >
+    AI energy management MVP. All endpoints except /health and /auth/login require
+    `Authorization: Bearer <token>`. JSON is snake_case, timestamps are RFC3339 in UTC.
+    Errors are `{"error": "message"}`.
+servers:
+  - url: http://localhost:8080/api
+security:
+  - bearer: []
+
+paths:
+  /health:
+    get:
+      summary: Service and database status
+      security: []
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+        "503": { description: Database unreachable }
+
+  /auth/login:
+    post:
+      summary: Log in with the demo user (demo@energy.io / demo123)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties: { email: { type: string }, password: { type: string } }
+      responses:
+        "200":
+          description: JWT valid for 24 hours
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  expires_at: { type: string, format: date-time }
+                  user: { type: object, properties: { email: { type: string } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { description: Invalid credentials }
+
+  /meters:
+    get:
+      summary: Meters with last-day consumption, baseline, variation, status and anomaly
+      description: The baseline is computed from the readings, so this works before the first analysis. `status` and `anomaly` come from the latest completed analysis.
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [ALL, OK, ALERT, CRITICAL] }, description: Case-insensitive }
+        - { name: search, in: query, schema: { type: string }, description: Substring of meter_id }
+        - { name: sort, in: query, schema: { type: string, enum: [consumption, variation, severity] } }
+        - { name: order, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/MeterSummary" } } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /meters/{meterId}:
+    get:
+      summary: Meter detail (same shape as the list item)
+      parameters: [{ $ref: "#/components/parameters/meterId" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MeterSummary" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /meters/{meterId}/readings:
+    get:
+      summary: Time series with the baseline for each point
+      description: >
+        `hour` returns the raw readings with the expected values for that hour of day; the band is
+        baseline ± 3·MAD. `day` sums consumption and baselines per UTC day and averages voltage,
+        current and power factor. The baseline always comes from the whole series.
+      parameters:
+        - { $ref: "#/components/parameters/meterId" }
+        - { name: from, in: query, schema: { type: string }, description: RFC3339 or YYYY-MM-DD, inclusive }
+        - { name: to, in: query, schema: { type: string }, description: RFC3339 or YYYY-MM-DD, inclusive }
+        - { name: granularity, in: query, schema: { type: string, enum: [hour, day], default: hour } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meter_id: { type: string }
+                  granularity: { type: string }
+                  points: { type: array, items: { $ref: "#/components/schemas/ReadingPoint" } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /meters/{meterId}/events:
+    get:
+      summary: Operational events of the meter
+      parameters: [{ $ref: "#/components/parameters/meterId" }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    timestamp: { type: string, format: date-time }
+                    type: { type: string, example: SCHEDULED_OUTAGE }
+                    description: { type: string }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /anomalies:
+    get:
+      summary: Anomalies of the latest completed analysis, highest priority first
+      parameters:
+        - { name: type, in: query, schema: { $ref: "#/components/schemas/AnomalyType" } }
+        - { name: severity, in: query, schema: { $ref: "#/components/schemas/Severity" } }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/AnomalyStatus" } }
+      responses:
+        "200": { description: OK (empty before the first analysis), content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Anomaly" } } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /anomalies/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+    get:
+      summary: Anomaly detail with the evidence that backs the conclusion
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Anomaly" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      summary: Acknowledge or resolve an anomaly
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [status], properties: { status: { $ref: "#/components/schemas/AnomalyStatus" } } }
+      responses:
+        "200": { description: The updated anomaly, content: { application/json: { schema: { $ref: "#/components/schemas/Anomaly" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /ai/analyze:
+    post:
+      summary: Start an analysis run in the background
+      description: Poll `GET /ai/analysis/{id}` for progress. The delay after each stage is set by ANALYSIS_STEP_DELAY_MS.
+      responses:
+        "202": { description: Started, content: { application/json: { schema: { type: object, properties: { id: { type: integer } } } } } }
+        "409":
+          description: An analysis is already running; its id is returned
+          content: { application/json: { schema: { type: object, properties: { error: { type: string }, id: { type: integer } } } } }
+
+  /ai/analysis/latest:
+    get:
+      summary: The most recent analysis run
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AnalysisRun" } } } }
+        "404": { description: No analysis has been run yet }
+
+  /ai/analysis/{id}:
+    get:
+      summary: Status, current step, per-step state and summary of a run
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AnalysisRun" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /dashboard/summary:
+    get:
+      summary: Everything the dashboard needs in one call
+      description: Analysis-derived fields are empty before the first analysis (`last_analysis` and `avg_confidence` are null).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meters_count: { type: integer }
+                  total_consumption_kwh: { type: number, description: Whole period }
+                  anomalies_count: { type: integer }
+                  high_priority_count: { type: integer, description: Anomalies with HIGH severity }
+                  avg_confidence: { type: number, nullable: true }
+                  last_analysis: { allOf: [{ $ref: "#/components/schemas/AnalysisRun" }], nullable: true }
+                  daily_consumption:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date: { type: string, example: "2026-09-14" }
+                        consumption_kwh: { type: number }
+                        baseline_kwh: { type: number, description: Sum of the meters' expected daily consumption }
+                  top_priorities: { type: array, items: { $ref: "#/components/schemas/Anomaly" }, description: Up to 4 }
+                  meters: { type: array, items: { $ref: "#/components/schemas/MeterSummary" } }
+                  generated_at: { type: string, format: date-time }
+
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  parameters:
+    meterId: { name: meterId, in: path, required: true, schema: { type: string, example: M-109 } }
+
+  responses:
+    BadRequest: { description: Invalid input, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    NotFound: { description: Not found, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
+  schemas:
+    Error: { type: object, properties: { error: { type: string } } }
+    Health: { type: object, properties: { status: { type: string }, db: { type: string } } }
+    MeterStatus: { type: string, enum: [OK, ALERT, CRITICAL] }
+    Severity: { type: string, enum: [HIGH, MEDIUM, LOW] }
+    AnomalyType: { type: string, enum: [REAL_ANOMALY, EXPLAINABLE_ANOMALY, FALSE_POSITIVE, DATA_QUALITY] }
+    AnomalyStatus: { type: string, enum: [OPEN, ACKNOWLEDGED, RESOLVED] }
+
+    MeterSummary:
+      type: object
+      properties:
+        meter_id: { type: string, example: M-109 }
+        name: { type: string }
+        location: { type: string }
+        status: { $ref: "#/components/schemas/MeterStatus" }
+        consumption_kwh: { type: number, description: Last 24 hours }
+        baseline_kwh: { type: number, description: Expected daily consumption }
+        variation_pct: { type: number }
+        anomaly: { allOf: [{ $ref: "#/components/schemas/Anomaly" }], nullable: true }
+
+    ReadingPoint:
+      type: object
+      properties:
+        timestamp: { type: string, format: date-time }
+        consumption_kwh: { type: number }
+        voltage_v: { type: number }
+        current_a: { type: number }
+        power_factor: { type: number }
+        baseline_kwh: { type: number }
+        band_low_kwh: { type: number }
+        band_high_kwh: { type: number }
+        baseline_voltage_v: { type: number }
+        baseline_current_a: { type: number }
+        baseline_power_factor: { type: number }
+
+    Anomaly:
+      type: object
+      description: >
+        The engine decides type, severity, priority and confidence. `evidence` is only present in the
+        detail endpoint.
+      properties:
+        id: { type: integer }
+        meter_id: { type: string }
+        meter_name: { type: string }
+        analysis_run_id: { type: integer }
+        detected_at: { type: string, format: date-time }
+        type: { $ref: "#/components/schemas/AnomalyType" }
+        severity: { $ref: "#/components/schemas/Severity" }
+        confidence: { type: number, minimum: 0, maximum: 0.99 }
+        priority_score: { type: number, minimum: 0, maximum: 100 }
+        reason: { type: string, description: One-line summary }
+        explanation: { type: string, description: Extended explanation (max 4 sentences) }
+        recommended_action: { type: string }
+        status: { $ref: "#/components/schemas/AnomalyStatus" }
+        window_start: { type: string, format: date-time, nullable: true }
+        window_end: { type: string, format: date-time, nullable: true }
+        explanation_source: { type: string, enum: [LLM, TEMPLATE] }
+        evidence:
+          type: object
+          description: Window, metrics vs baseline, changed variables, related events, rules fired, priority and confidence breakdowns, and quality flags for DATA_QUALITY.
+
+    AnalysisRun:
+      type: object
+      properties:
+        id: { type: integer }
+        status: { type: string, enum: [PENDING, RUNNING, COMPLETED, FAILED] }
+        current_step: { type: string, nullable: true }
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string, example: Baseline }
+              status: { type: string, enum: [PENDING, RUNNING, DONE] }
+              duration_ms: { type: integer }
+        summary:
+          type: object
+          nullable: true
+          description: Set when finished. `error` is set instead if it failed.
+          properties:
+            meters_analyzed: { type: integer }
+            anomalies: { type: integer }
+            high_priority: { type: integer }
+            avg_confidence: { type: number }
+            duration_ms: { type: integer }
+            error: { type: string }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time, nullable: true }

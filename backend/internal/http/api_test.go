@@ -1,0 +1,562 @@
+package http
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5"
+
+	"github.com/Seb0sti0n/astrophage/backend/internal/analysis"
+	"github.com/Seb0sti0n/astrophage/backend/internal/config"
+	"github.com/Seb0sti0n/astrophage/backend/internal/db"
+	"github.com/Seb0sti0n/astrophage/backend/internal/seed"
+)
+
+const testSecret = "test-secret"
+
+// testEnv is an API server backed by a freshly seeded PostgreSQL database. The tests use their
+// own database (astrophage_test), never the development one, because the seed truncates it.
+type testEnv struct {
+	t      *testing.T
+	store  *db.Store
+	router http.Handler
+	token  string
+}
+
+func testDatabaseURL() string {
+	if v := os.Getenv("TEST_DATABASE_URL"); v != "" {
+		return v
+	}
+	return "postgres://postgres:postgres@localhost:5432/astrophage_test?sslmode=disable"
+}
+
+func newEnv(t *testing.T, stepDelay time.Duration) *testEnv {
+	t.Helper()
+	ctx := context.Background()
+	url := testDatabaseURL()
+
+	// Create the test database if it does not exist yet (connect to the maintenance DB first).
+	admin, err := pgx.Connect(ctx, strings.Replace(url, "/astrophage_test", "/postgres", 1))
+	if err != nil {
+		t.Skipf("PostgreSQL not available: %v", err)
+	}
+	var exists bool
+	_ = admin.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'astrophage_test')`).Scan(&exists)
+	if !exists {
+		if _, err := admin.Exec(ctx, `CREATE DATABASE astrophage_test`); err != nil {
+			t.Fatal(err)
+		}
+	}
+	admin.Close(ctx)
+
+	if err := seed.Migrate(url); err != nil {
+		t.Fatal(err)
+	}
+	pool, err := db.Connect(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	if _, err := seed.Run(ctx, pool, "../../../data"); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := config.Config{JWTSecret: testSecret, CORSOrigin: "http://localhost:5173", StepDelay: stepDelay, Engine: config.DefaultEngine()}
+	store := db.NewStore(pool)
+	env := &testEnv{t: t, store: store, router: NewServer(store, analysis.NewRunner(store, cfg), cfg).Router()}
+
+	code, body := env.do("POST", "/api/auth/login", `{"email":"demo@energy.io","password":"demo123"}`, "")
+	if code != 200 {
+		t.Fatalf("login failed: %d %s", code, body)
+	}
+	env.token = decode[struct{ Token string }](t, body).Token
+	return env
+}
+
+func (e *testEnv) do(method, path, body, token string) (int, []byte) {
+	e.t.Helper()
+	req := httptest.NewRequest(method, path, bytes.NewBufferString(body))
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	rec := httptest.NewRecorder()
+	e.router.ServeHTTP(rec, req)
+	return rec.Code, rec.Body.Bytes()
+}
+
+// get/send call an authenticated endpoint.
+func (e *testEnv) get(path string) (int, []byte)        { return e.do("GET", path, "", e.token) }
+func (e *testEnv) send(m, path, b string) (int, []byte) { return e.do(m, path, b, e.token) }
+
+func decode[T any](t *testing.T, b []byte) T {
+	t.Helper()
+	var v T
+	if err := json.Unmarshal(b, &v); err != nil {
+		t.Fatalf("bad JSON %q: %v", b, err)
+	}
+	return v
+}
+
+func (e *testEnv) mustGet(path string, want int) []byte {
+	e.t.Helper()
+	code, body := e.get(path)
+	if code != want {
+		e.t.Fatalf("GET %s = %d, want %d: %s", path, code, want, body)
+	}
+	return body
+}
+
+type run struct {
+	ID          int
+	Status      string
+	CurrentStep *string `json:"current_step"`
+	Steps       []struct{ Name, Status string }
+	Summary     struct {
+		Anomalies      int
+		HighPriority   int `json:"high_priority"`
+		MetersAnalyzed int `json:"meters_analyzed"`
+	}
+}
+
+// analyze starts an analysis and waits for it to finish.
+func (e *testEnv) analyze() run {
+	e.t.Helper()
+	code, body := e.send("POST", "/api/ai/analyze", "")
+	if code != http.StatusAccepted {
+		e.t.Fatalf("analyze = %d: %s", code, body)
+	}
+	return e.waitFor(decode[struct{ ID int }](e.t, body).ID)
+}
+
+func (e *testEnv) waitFor(id int) run {
+	e.t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		r := decode[run](e.t, e.mustGet("/api/ai/analysis/"+itoa(id), 200))
+		if r.Status == "COMPLETED" || r.Status == "FAILED" {
+			return r
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	e.t.Fatalf("analysis %d did not finish in time", id)
+	return run{}
+}
+
+func itoa(n int) string { b, _ := json.Marshal(n); return string(b) }
+
+type meterRow struct {
+	MeterID      string  `json:"meter_id"`
+	Status       string  `json:"status"`
+	Consumption  float64 `json:"consumption_kwh"`
+	Baseline     float64 `json:"baseline_kwh"`
+	VariationPct float64 `json:"variation_pct"`
+	Anomaly      *struct{ Type, Severity string }
+}
+
+func meterIDs(ms []meterRow) []string {
+	out := []string{}
+	for _, m := range ms {
+		out = append(out, m.MeterID)
+	}
+	return out
+}
+
+func eq(a, b []string) bool { return strings.Join(a, ",") == strings.Join(b, ",") }
+
+func TestAuth(t *testing.T) {
+	e := newEnv(t, 0)
+	signed := func(secret string, exp time.Time) string {
+		s, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{Subject: "x", ExpiresAt: jwt.NewNumericDate(exp)}).SignedString([]byte(secret))
+		return s
+	}
+	tests := []struct {
+		name  string
+		token string
+		want  int
+	}{
+		{"no token", "", 401},
+		{"garbage token", "abc.def.ghi", 401},
+		{"signed with another secret", signed("other", time.Now().Add(time.Hour)), 401},
+		{"expired token", signed(testSecret, time.Now().Add(-time.Hour)), 401},
+		{"valid token", signed(testSecret, time.Now().Add(time.Hour)), 200},
+		{"token from login", e.token, 200},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if code, _ := e.do("GET", "/api/meters", "", tt.token); code != tt.want {
+				t.Errorf("got %d, want %d", code, tt.want)
+			}
+		})
+	}
+	for name, body := range map[string]string{
+		"wrong password": `{"email":"demo@energy.io","password":"nope"}`,
+		"unknown user":   `{"email":"nobody@energy.io","password":"demo123"}`,
+		"invalid body":   `not json`,
+	} {
+		code, _ := e.do("POST", "/api/auth/login", body, "")
+		want := 401
+		if name == "invalid body" {
+			want = 400
+		}
+		if code != want {
+			t.Errorf("%s: got %d, want %d", name, code, want)
+		}
+	}
+	// health and login are public
+	if code, _ := e.do("GET", "/api/health", "", ""); code != 200 {
+		t.Errorf("health = %d", code)
+	}
+}
+
+func TestBeforeAnyAnalysis(t *testing.T) {
+	e := newEnv(t, 0)
+
+	ms := decode[[]meterRow](t, e.mustGet("/api/meters", 200))
+	if len(ms) != 12 {
+		t.Fatalf("got %d meters, want 12", len(ms))
+	}
+	for _, m := range ms {
+		if m.Status != "OK" || m.Anomaly != nil {
+			t.Errorf("%s: status %s anomaly %v before analysis", m.MeterID, m.Status, m.Anomaly)
+		}
+	}
+	byVar := decode[[]meterRow](t, e.mustGet("/api/meters?sort=variation", 200))
+	if byVar[0].MeterID != "M-109" || byVar[0].VariationPct < 105 || byVar[0].VariationPct > 115 {
+		t.Errorf("first by variation = %+v, want M-109 ≈ +110%%", byVar[0])
+	}
+	if byVar[1].MeterID != "M-104" {
+		t.Errorf("second by variation = %s, want M-104", byVar[1].MeterID)
+	}
+	asc := decode[[]meterRow](t, e.mustGet("/api/meters?sort=consumption&order=asc", 200))
+	if asc[0].MeterID != "M-107" || asc[11].MeterID != "M-109" {
+		t.Errorf("consumption asc = %v", meterIDs(asc))
+	}
+	if got := meterIDs(decode[[]meterRow](t, e.mustGet("/api/meters?search=11", 200))); !eq(got, []string{"M-110", "M-111", "M-112"}) {
+		t.Errorf("search 11 = %v", got)
+	}
+	if got := decode[[]meterRow](t, e.mustGet("/api/meters?search=zzz", 200)); len(got) != 0 {
+		t.Errorf("search zzz = %v", got)
+	}
+	for _, bad := range []string{"status=nope", "sort=nope", "order=up"} {
+		e.mustGet("/api/meters?"+bad, 400)
+	}
+
+	e.mustGet("/api/ai/analysis/latest", 404)
+	e.mustGet("/api/ai/analysis/999", 404)
+	e.mustGet("/api/ai/analysis/abc", 400)
+	if got := decode[[]any](t, e.mustGet("/api/anomalies", 200)); len(got) != 0 {
+		t.Errorf("anomalies before analysis = %v", got)
+	}
+
+	d := decode[struct {
+		Meters      int                     `json:"meters_count"`
+		Total       float64                 `json:"total_consumption_kwh"`
+		Count       int                     `json:"anomalies_count"`
+		AvgConf     *float64                `json:"avg_confidence"`
+		LastRun     *struct{}               `json:"last_analysis"`
+		Daily       []struct{ Date string } `json:"daily_consumption"`
+		TopPriority []any                   `json:"top_priorities"`
+	}](t, e.mustGet("/api/dashboard/summary", 200))
+	if d.Meters != 12 || d.Count != 0 || d.AvgConf != nil || d.LastRun != nil || len(d.Daily) != 14 || len(d.TopPriority) != 0 {
+		t.Errorf("summary before analysis = %+v", d)
+	}
+	if d.Total < 155000 || d.Total > 155500 {
+		t.Errorf("total consumption = %.1f, want ≈ 155.251", d.Total)
+	}
+}
+
+// The full demo cycle: analyze → poll → anomalies, with priority order and derived meter status.
+func TestAnalysisCycle(t *testing.T) {
+	e := newEnv(t, 0)
+	r := e.analyze()
+
+	if r.Status != "COMPLETED" || r.CurrentStep != nil {
+		t.Fatalf("run = %+v", r)
+	}
+	if len(r.Steps) != 7 || r.Steps[0].Name != "Lecturas" || r.Steps[6].Name != "Recomendación" {
+		t.Fatalf("steps = %+v", r.Steps)
+	}
+	for _, s := range r.Steps {
+		if s.Status != "DONE" {
+			t.Errorf("step %s is %s", s.Name, s.Status)
+		}
+	}
+	if r.Summary.Anomalies != 4 || r.Summary.HighPriority != 2 || r.Summary.MetersAnalyzed != 12 {
+		t.Errorf("summary = %+v", r.Summary)
+	}
+	latest := decode[run](t, e.mustGet("/api/ai/analysis/latest", 200))
+	if latest.ID != r.ID {
+		t.Errorf("latest = %d, want %d", latest.ID, r.ID)
+	}
+
+	type anomaly struct {
+		ID            int
+		MeterID       string `json:"meter_id"`
+		Type          string
+		Severity      string
+		Confidence    float64
+		PriorityScore float64 `json:"priority_score"`
+		Status        string
+		Source        string `json:"explanation_source"`
+		Reason        string
+		Explanation   string
+		Action        string `json:"recommended_action"`
+		Evidence      map[string]any
+	}
+	list := decode[[]anomaly](t, e.mustGet("/api/anomalies", 200))
+	want := []struct{ meter, typ, sev string }{
+		{"M-109", "REAL_ANOMALY", "HIGH"}, {"M-112", "DATA_QUALITY", "HIGH"},
+		{"M-104", "EXPLAINABLE_ANOMALY", "MEDIUM"}, {"M-106", "FALSE_POSITIVE", "LOW"},
+	}
+	if len(list) != 4 {
+		t.Fatalf("got %d anomalies", len(list))
+	}
+	for i, w := range want {
+		a := list[i]
+		if a.MeterID != w.meter || a.Type != w.typ || a.Severity != w.sev || a.Status != "OPEN" || a.Source != "TEMPLATE" {
+			t.Errorf("anomaly %d = %+v, want %+v", i, a, w)
+		}
+		if a.Reason == "" || a.Explanation == "" || a.Action == "" || a.Confidence <= 0 {
+			t.Errorf("anomaly %s is missing text or confidence", a.MeterID)
+		}
+		if i > 0 && a.PriorityScore > list[i-1].PriorityScore {
+			t.Errorf("not sorted by priority at %d", i)
+		}
+	}
+
+	// Filters.
+	for path, want := range map[string][]string{
+		"/api/anomalies?severity=high":                   {"M-109", "M-112"},
+		"/api/anomalies?type=false_positive":             {"M-106"},
+		"/api/anomalies?type=DATA_QUALITY&severity=HIGH": {"M-112"},
+		"/api/anomalies?severity=low&type=REAL_ANOMALY":  {},
+		"/api/anomalies?status=resolved":                 {},
+	} {
+		got := []string{}
+		for _, a := range decode[[]anomaly](t, e.mustGet(path, 200)) {
+			got = append(got, a.MeterID)
+		}
+		if !eq(got, want) {
+			t.Errorf("%s = %v, want %v", path, got, want)
+		}
+	}
+	e.mustGet("/api/anomalies?type=nope", 400)
+
+	// Detail includes the evidence.
+	d := decode[anomaly](t, e.mustGet("/api/anomalies/"+itoa(list[0].ID), 200))
+	for _, k := range []string{"window", "metrics", "changed_variables", "events", "rules_fired", "priority_breakdown", "confidence_breakdown"} {
+		if _, ok := d.Evidence[k]; !ok {
+			t.Errorf("evidence is missing %q", k)
+		}
+	}
+	e.mustGet("/api/anomalies/99999", 404)
+	e.mustGet("/api/anomalies/abc", 400)
+
+	// Meter statuses are derived from the anomalies; filters and severity sort use them.
+	crit := decode[[]meterRow](t, e.mustGet("/api/meters?status=critical", 200))
+	alert := decode[[]meterRow](t, e.mustGet("/api/meters?status=alert", 200))
+	ok := decode[[]meterRow](t, e.mustGet("/api/meters?status=ok", 200))
+	if !eq(meterIDs(crit), []string{"M-109"}) || !eq(meterIDs(alert), []string{"M-104", "M-112"}) || len(ok) != 9 {
+		t.Errorf("critical=%v alert=%v ok=%d", meterIDs(crit), meterIDs(alert), len(ok))
+	}
+	for _, m := range ok {
+		if m.MeterID == "M-106" && (m.Anomaly == nil || m.Anomaly.Type != "FALSE_POSITIVE") {
+			t.Errorf("M-106 should be OK but still show its explained anomaly: %+v", m)
+		}
+	}
+	sorted := decode[[]meterRow](t, e.mustGet("/api/meters?sort=severity", 200))
+	if !eq(meterIDs(sorted)[:4], []string{"M-109", "M-112", "M-104", "M-106"}) {
+		t.Errorf("severity order = %v", meterIDs(sorted))
+	}
+	detail := decode[meterRow](t, e.mustGet("/api/meters/M-109", 200))
+	if detail.Status != "CRITICAL" || detail.Anomaly == nil || detail.Anomaly.Type != "REAL_ANOMALY" {
+		t.Errorf("M-109 detail = %+v", detail)
+	}
+	e.mustGet("/api/meters/M-999", 404)
+
+	// Dashboard.
+	s := decode[struct {
+		Count   int      `json:"anomalies_count"`
+		High    int      `json:"high_priority_count"`
+		AvgConf *float64 `json:"avg_confidence"`
+		Last    *run     `json:"last_analysis"`
+		Top     []struct {
+			MeterID string `json:"meter_id"`
+		} `json:"top_priorities"`
+	}](t, e.mustGet("/api/dashboard/summary", 200))
+	if s.Count != 4 || s.High != 2 || s.AvgConf == nil || *s.AvgConf < 0.85 || s.Last == nil || s.Last.Status != "COMPLETED" || len(s.Top) != 4 || s.Top[0].MeterID != "M-109" {
+		t.Errorf("summary = %+v", s)
+	}
+
+	// Acknowledge / resolve.
+	id := "/api/anomalies/" + itoa(list[0].ID)
+	for _, status := range []string{"ACKNOWLEDGED", "RESOLVED"} {
+		code, body := e.send("PATCH", id, `{"status":"`+status+`"}`)
+		if code != 200 || decode[anomaly](t, body).Status != status {
+			t.Errorf("patch %s = %d %s", status, code, body)
+		}
+	}
+	if got := decode[[]anomaly](t, e.mustGet("/api/anomalies?status=resolved", 200)); len(got) != 1 {
+		t.Errorf("resolved anomalies = %d", len(got))
+	}
+	if code, _ := e.send("PATCH", id, `{"status":"DONE"}`); code != 400 {
+		t.Errorf("invalid status = %d", code)
+	}
+	if code, _ := e.send("PATCH", id, `nope`); code != 400 {
+		t.Errorf("invalid body = %d", code)
+	}
+	if code, _ := e.send("PATCH", "/api/anomalies/99999", `{"status":"OPEN"}`); code != 404 {
+		t.Errorf("patch missing = %d", code)
+	}
+
+	// Running again replaces the visible anomalies with the new run's: still 4, all OPEN again.
+	e.analyze()
+	again := decode[[]anomaly](t, e.mustGet("/api/anomalies", 200))
+	if len(again) != 4 || again[0].Status != "OPEN" || again[0].ID == list[0].ID {
+		t.Errorf("after a second run: %d anomalies, first %+v", len(again), again[0])
+	}
+}
+
+func TestOnlyOneAnalysisAtATime(t *testing.T) {
+	e := newEnv(t, 150*time.Millisecond)
+
+	code, body := e.send("POST", "/api/ai/analyze", "")
+	if code != http.StatusAccepted {
+		t.Fatalf("first analyze = %d", code)
+	}
+	first := decode[struct{ ID int }](t, body).ID
+
+	code, body = e.send("POST", "/api/ai/analyze", "")
+	if code != http.StatusConflict || decode[struct{ ID int }](t, body).ID != first {
+		t.Errorf("second analyze = %d %s, want 409 with id %d", code, body, first)
+	}
+
+	// While it runs the progress is visible: a current step and some steps still pending.
+	time.Sleep(200 * time.Millisecond)
+	mid := decode[run](t, e.mustGet("/api/ai/analysis/"+itoa(first), 200))
+	if mid.Status != "RUNNING" || mid.CurrentStep == nil {
+		t.Errorf("mid-run = %+v", mid)
+	}
+	pending := 0
+	for _, s := range mid.Steps {
+		if s.Status == "PENDING" {
+			pending++
+		}
+	}
+	if pending == 0 {
+		t.Errorf("expected pending steps mid-run, got %+v", mid.Steps)
+	}
+
+	if r := e.waitFor(first); r.Status != "COMPLETED" {
+		t.Fatalf("run = %+v", r)
+	}
+	// Once finished, a new one can start.
+	if code, _ := e.send("POST", "/api/ai/analyze", ""); code != http.StatusAccepted {
+		t.Errorf("analyze after completion = %d", code)
+	}
+	time.Sleep(1200 * time.Millisecond) // let it finish before the next test reseeds
+}
+
+func TestStaleRunsAreFailedOnStartup(t *testing.T) {
+	e := newEnv(t, 0)
+	ctx := context.Background()
+	id, err := e.store.CreateRun(ctx, []byte("[]"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A run stuck in progress blocks new analyses...
+	if code, _ := e.send("POST", "/api/ai/analyze", ""); code != http.StatusConflict {
+		t.Fatalf("analyze with a stuck run = %d, want 409", code)
+	}
+	// ...until startup cleanup marks it failed.
+	if err := e.store.FailStaleRuns(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if r := decode[run](t, e.mustGet("/api/ai/analysis/"+itoa(id), 200)); r.Status != "FAILED" {
+		t.Errorf("stale run = %s", r.Status)
+	}
+	if r := e.analyze(); r.Status != "COMPLETED" {
+		t.Errorf("new run = %s", r.Status)
+	}
+}
+
+func TestReadingsAndEvents(t *testing.T) {
+	e := newEnv(t, 0)
+	type point struct {
+		Timestamp   time.Time
+		Consumption float64 `json:"consumption_kwh"`
+		Baseline    float64 `json:"baseline_kwh"`
+		Low         float64 `json:"band_low_kwh"`
+		High        float64 `json:"band_high_kwh"`
+		BaselinePF  float64 `json:"baseline_power_factor"`
+		PowerFactor float64 `json:"power_factor"`
+	}
+	type series struct {
+		MeterID     string `json:"meter_id"`
+		Granularity string
+		Points      []point
+	}
+
+	hourly := decode[series](t, e.mustGet("/api/meters/M-109/readings", 200))
+	if hourly.Granularity != "hour" || len(hourly.Points) != 336 {
+		t.Fatalf("hourly = %s, %d points", hourly.Granularity, len(hourly.Points))
+	}
+	if !hourly.Points[0].Timestamp.Equal(time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("first point at %v", hourly.Points[0].Timestamp)
+	}
+	for _, p := range hourly.Points {
+		if !(p.Low <= p.Baseline && p.Baseline <= p.High) {
+			t.Fatalf("band does not contain the baseline at %v: %+v", p.Timestamp, p)
+		}
+	}
+
+	// The anomaly window starts at 12 Sep 14:00, well outside the baseline band.
+	win := decode[series](t, e.mustGet("/api/meters/M-109/readings?from=2026-09-12T13:00:00Z&to=2026-09-12T14:00:00Z", 200))
+	if len(win.Points) != 2 {
+		t.Fatalf("range = %d points", len(win.Points))
+	}
+	before, after := win.Points[0], win.Points[1]
+	if before.Consumption > before.High*1.2 || after.Consumption < after.High*1.5 {
+		t.Errorf("expected a jump above the band at 14:00: before=%+v after=%+v", before, after)
+	}
+	if after.PowerFactor > after.BaselinePF-0.15 {
+		t.Errorf("expected the power factor to drop: %+v", after)
+	}
+	if got := decode[series](t, e.mustGet("/api/meters/M-109/readings?from=2026-09-14&to=2026-09-14", 200)); len(got.Points) != 1 {
+		t.Errorf("date-only range = %d points, want 1", len(got.Points))
+	}
+
+	daily := decode[series](t, e.mustGet("/api/meters/M-109/readings?granularity=day", 200))
+	if len(daily.Points) != 14 {
+		t.Fatalf("daily = %d points", len(daily.Points))
+	}
+	last := daily.Points[13]
+	if last.Consumption < 2200 || last.Consumption > 2215 || last.Baseline < 1040 || last.Baseline > 1055 || last.High < last.Baseline {
+		t.Errorf("last day = %+v", last)
+	}
+	if last.PowerFactor > 0.8 || daily.Points[0].PowerFactor < 0.9 {
+		t.Errorf("daily power factor should be averaged: first %.3f last %.3f", daily.Points[0].PowerFactor, last.PowerFactor)
+	}
+
+	for _, bad := range []string{"granularity=week", "from=yesterday", "to=13/09"} {
+		e.mustGet("/api/meters/M-109/readings?"+bad, 400)
+	}
+	e.mustGet("/api/meters/M-999/readings", 404)
+
+	events := decode[[]struct{ Type, Description string }](t, e.mustGet("/api/meters/M-109/events", 200))
+	if len(events) != 1 || events[0].Type != "UNKNOWN" {
+		t.Errorf("M-109 events = %+v", events)
+	}
+	if got := decode[[]any](t, e.mustGet("/api/meters/M-101/events", 200)); len(got) != 0 {
+		t.Errorf("M-101 events = %v", got)
+	}
+	e.mustGet("/api/meters/M-999/events", 404)
+}

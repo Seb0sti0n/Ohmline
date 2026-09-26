@@ -70,6 +70,27 @@ deterministic templates in Spanish (`explain.go`); an LLM can rewrite them later
 Limitations: thresholds are tuned to this dataset; the 7-day baseline is short and assumes it contains no
 anomalies (true here); one anomaly is reported per meter (the highest-priority window).
 
+## API
+
+REST under `/api`, documented in [backend/openapi.yaml](backend/openapi.yaml). JWT auth (`POST /api/auth/login`) on
+everything except `/health`. Main flow: `POST /ai/analyze` starts a run in a goroutine (409 if one is already
+running), `GET /ai/analysis/{id}` reports the stage and per-stage state, and `GET /anomalies` returns the
+anomalies of the latest completed run ordered by priority. `GET /meters` supports `status`, `search`, `sort`
+(`consumption`, `variation`, `severity`) and `order`; `GET /meters/{id}/readings` returns the series with the
+baseline band for each point (`granularity=hour|day`).
+
+The engine runs as one pure computation during the "Detección" stage; the seven stages of the stepper mirror the
+pipeline and pause `ANALYSIS_STEP_DELAY_MS` (default 600) each so the progress is visible. Runs left in progress
+by a previous process are marked `FAILED` on startup.
+
+Meter status is derived from the latest analysis: `REAL_ANOMALY` → CRITICAL, `DATA_QUALITY` and
+`EXPLAINABLE_ANOMALY` → ALERT, `FALSE_POSITIVE` and no anomaly → OK.
+
+## Tests
+
+`make test` runs the backend and frontend tests. The API tests need PostgreSQL: they create and use their own
+`astrophage_test` database (override with `TEST_DATABASE_URL`) and skip themselves if Postgres is not reachable.
+
 ## Status
 
-Phases 1 (scaffolding), 2 (data) and 3 (analysis engine) done. Next: API, LLM layer, frontend.
+Phases 1 (scaffolding), 2 (data), 3 (analysis engine) and 4 (API) done. Next: LLM layer, frontend.
