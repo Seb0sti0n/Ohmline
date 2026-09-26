@@ -1,0 +1,37 @@
+{
+  "name": "astrophage-frontend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --build && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "tokens": "node scripts/generate-theme.mjs",
+    "format": "prettier --write src/"
+  },
+  "dependencies": {
+    "axios": "^1.20.0",
+    "echarts": "^6.1.0",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.43",
+    "vue-echarts": "^8.3.0",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@tsconfig/node22": "^22.0.6",
+    "@types/node": "^22.20.4",
+    "@vitejs/plugin-vue": "^6.0.9",
+    "@vue/test-utils": "^2.5.1",
+    "@vue/tsconfig": "^0.9.1",
+    "jsdom": "^30.1.1",
+    "prettier": "^3.5.3",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~5.8",
+    "vite": "^6.4.3",
+    "vitest": "^3.2.7",
+    "vue-tsc": "^2.2.12"
+  }
+}

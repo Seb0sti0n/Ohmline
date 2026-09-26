@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Resumen operativo</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..700&amp;display=swap">
+<style>
+body{margin:0;background:#EEF2F0}
+a{color:#0E6B63}a:hover{color:#0A4F49}
+button,input{font-family:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #0E6B63;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1180px; display: flex; font-family: Archivo, 'Helvetica Neue', sans-serif; color: #15201C; background: #EEF2F0">
+<aside style="width: 232px; flex-shrink: 0; height: 1180px; box-sizing: border-box; background: #15201C; color: #FFFFFF; display: flex; flex-direction: column; padding: 24px 16px">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 28px 8px">
+<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect width="30" height="30" rx="7" fill="#0E6B63"/><path d="M5 19h5l3-9 4 12 3-7h5" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<span style="font-size: 19px; font-weight: 700; font-stretch: 112%">Ohmline</span>
+</div>
+<nav aria-label="Principal" style="display: flex; flex-direction: column; gap: 4px">
+<a href="Main.dc.html" style="display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 14px; border-radius: 8px; background: #26332E; color: #FFFFFF; text-decoration: none; font-size: 15px; font-weight: 600"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg><span>Resumen</span></a>
+<a href="Meters.dc.html" style="display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 14px; border-radius: 8px; background: transparent; color: #B9C5C0; text-decoration: none; font-size: 15px; font-weight: 500"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 13l4-4M8 5.5 7 3.5M16 5.5l1-2"/></svg><span>Medidores</span></a>
+<a href="Anomalies.dc.html" style="display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 14px; border-radius: 8px; background: transparent; color: #B9C5C0; text-decoration: none; font-size: 15px; font-weight: 500"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17v.5"/></svg><span>Anomalías IA</span></a>
+</nav>
+<div style="flex-grow: 1"></div>
+<div style="border-top: 1px solid #2E3B36; padding: 16px 8px 0 8px; display: flex; align-items: center; gap: 10px">
+<div style="width: 34px; height: 34px; border-radius: 50%; background: #2E3B36; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600">OP</div>
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Operador demo</span><span style="font-size: 12px; color: #B9C5C0">demo@energy.io</span></div>
+<a href="Login.dc.html" aria-label="Cerrar sesión" style="color: #B9C5C0; display: flex; width: 44px; height: 44px; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg></a>
+</div>
+</aside>
+<main style="flex-grow: 1; box-sizing: border-box; padding: 32px 40px; display: flex; flex-direction: column; gap: 24px">
+<header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h1 style="margin: 0; font-size: 34px; font-weight: 700; font-stretch: 112%; letter-spacing: -0.01em">Resumen operativo</h1>
+<p style="margin: 0; font-size: 15px; color: #55615C">12 medidores, del 1 al 14 de septiembre de 2026</p>
+</div>
+<button onClick="{{run}}" disabled="{{running}}" style="display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 22px; border: 0; border-radius: 10px; background: #0E6B63; color: #FFFFFF; font-size: 16px; font-weight: 600; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l13 8-13 8V4z"/></svg><span>{{runLabel}}</span></button>
+</header>
+
+<section aria-label="Análisis IA" style="background: #FFFFFF; border: 1px solid #D8DFDB; border-radius: 14px; padding: 22px 26px; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<h2 style="margin: 0; font-size: 18px; font-weight: 650">Análisis IA</h2>
+<span style="font-size: 14px; color: #55615C">{{statusText}}</span>
+</div>
+<ol style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0">
+<sc-for list="{{steps}}" as="s" hint-placeholder-count="7">
+<li style="display: flex; flex-direction: column; gap: 8px; position: relative">
+<div style="display: flex; align-items: center">
+<span style="width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; {{s.dotStyle}}">
+<sc-if value="{{s.done}}" hint-placeholder-val="{{false}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></sc-if>
+<sc-if value="{{s.notDone}}" hint-placeholder-val="{{true}}"><span>{{s.n}}</span></sc-if>
+</span>
+<sc-if value="{{s.hasLine}}" hint-placeholder-val="{{true}}"><span style="flex-grow: 1; height: 2px; margin: 0 8px; {{s.lineStyle}}"></span></sc-if>
+</div>
+<span style="font-size: 15px; font-weight: 600; {{s.labelStyle}}">{{s.label}}</span>
+<span style="font-size: 13px; color: #55615C; min-height: 18px">{{s.detail}}</span>
+</li>
+</sc-for>
+</ol>
+<sc-if value="{{done}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; border-radius: 10px; background: #E3F0EE">
+<p style="margin: 0; font-size: 17px; font-weight: 600; color: #0A4F49">4 anomalías detectadas, 2 requieren atención prioritaria</p>
+<a href="Anomalies.dc.html" style="font-size: 15px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; height: 44px">Ver anomalías</a>
+</div>
+</sc-if>
+</section>
+
+<section aria-label="Indicadores" style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); background: #FFFFFF; border: 1px solid #D8DFDB; border-radius: 14px">
+<div style="padding: 18px 22px; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid #D8DFDB"><span style="font-size: 14px; color: #55615C">Medidores</span><span style="font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums">12</span><span style="font-size: 13px; color: #55615C">3 plantas</span></div>
+<div style="padding: 18px 22px; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid #D8DFDB"><span style="font-size: 14px; color: #55615C">Consumo del periodo</span><span style="font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums">155.251<span style="font-size: 16px; font-weight: 500; color: #55615C"> kWh</span></span><span style="font-size: 13px; color: #55615C">14 días</span></div>
+<div style="padding: 18px 22px; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid #D8DFDB"><span style="font-size: 14px; color: #55615C">Anomalías IA</span><span style="font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums">{{kAnom}}</span><span style="font-size: 13px; color: #55615C">{{kAnomSub}}</span></div>
+<div style="padding: 18px 22px; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid #D8DFDB"><span style="font-size: 14px; color: #55615C">Alta prioridad</span><span style="font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; color: {{kHighColor}}">{{kHigh}}</span><span style="font-size: 13px; color: #55615C">{{kHighSub}}</span></div>
+<div style="padding: 18px 22px; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid #D8DFDB"><span style="font-size: 14px; color: #55615C">Confianza IA media</span><span style="font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums">{{kConf}}</span><span style="font-size: 13px; color: #55615C">{{kConfSub}}</span></div>
+<div style="padding: 18px 22px; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 14px; color: #55615C">Último análisis</span><span style="font-size: 20px; font-weight: 650; line-height: 36px">{{kLast}}</span><span style="font-size: 13px; color: #55615C">{{kLastSub}}</span></div>
+</section>
+
+<div style="display: grid; grid-template-columns: 700px minmax(0, 1fr); gap: 24px">
+<section style="background: #FFFFFF; border: 1px solid #D8DFDB; border-radius: 14px; padding: 22px 26px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: baseline; justify-content: space-between">
+<h2 style="margin: 0; font-size: 18px; font-weight: 650">Consumo total diario</h2>
+<span style="display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #55615C"><svg width="22" height="4" aria-hidden="true"><line x1="0" x2="22" y1="2" y2="2" stroke="#15201C" stroke-dasharray="5 4" stroke-width="1.5"/></svg>Baseline 10.758 kWh/día</span>
+</div>
+<svg width="640" height="230" viewBox="0 0 640 230" role="img" aria-label="Consumo total diario del 1 al 14 de septiembre frente al baseline"><line x1="52" x2="640" y1="202.0" y2="202.0" stroke="#D8DFDB"/><text x="44" y="206.0" text-anchor="end" font-size="12" fill="#55615C">9k</text><line x1="52" x2="640" y1="154.0" y2="154.0" stroke="#D8DFDB"/><text x="44" y="158.0" text-anchor="end" font-size="12" fill="#55615C">10k</text><line x1="52" x2="640" y1="106.0" y2="106.0" stroke="#D8DFDB"/><text x="44" y="110.0" text-anchor="end" font-size="12" fill="#55615C">11k</text><line x1="52" x2="640" y1="58.0" y2="58.0" stroke="#D8DFDB"/><text x="44" y="62.0" text-anchor="end" font-size="12" fill="#55615C">12k</text><line x1="52" x2="640" y1="10.0" y2="10.0" stroke="#D8DFDB"/><text x="44" y="14.0" text-anchor="end" font-size="12" fill="#55615C">13k</text><rect x="58.0" y="116.8" width="29.4" height="85.2" rx="3" fill="#A9C7C2"/><text x="72.7" y="222" text-anchor="middle" font-size="12" fill="#55615C">1</text><rect x="99.4" y="118.4" width="29.4" height="83.6" rx="3" fill="#A9C7C2"/><text x="114.1" y="222" text-anchor="middle" font-size="12" fill="#55615C">2</text><rect x="140.9" y="116.1" width="29.4" height="85.9" rx="3" fill="#A9C7C2"/><text x="155.6" y="222" text-anchor="middle" font-size="12" fill="#55615C">3</text><rect x="182.3" y="115.5" width="29.4" height="86.5" rx="3" fill="#A9C7C2"/><text x="197.0" y="222" text-anchor="middle" font-size="12" fill="#55615C">4</text><rect x="223.7" y="117.1" width="29.4" height="84.9" rx="3" fill="#A9C7C2"/><text x="238.4" y="222" text-anchor="middle" font-size="12" fill="#55615C">5</text><rect x="265.1" y="118.4" width="29.4" height="83.6" rx="3" fill="#A9C7C2"/><text x="279.9" y="222" text-anchor="middle" font-size="12" fill="#55615C">6</text><rect x="306.6" y="120.0" width="29.4" height="82.0" rx="3" fill="#A9C7C2"/><text x="321.3" y="222" text-anchor="middle" font-size="12" fill="#55615C">7</text><rect x="348.0" y="141.1" width="29.4" height="60.9" rx="3" fill="#A9C7C2"/><text x="362.7" y="222" text-anchor="middle" font-size="12" fill="#55615C">8</text><rect x="389.4" y="116.9" width="29.4" height="85.1" rx="3" fill="#A9C7C2"/><text x="404.1" y="222" text-anchor="middle" font-size="12" fill="#55615C">9</text><rect x="430.9" y="116.2" width="29.4" height="85.8" rx="3" fill="#A9C7C2"/><text x="445.6" y="222" text-anchor="middle" font-size="12" fill="#55615C">10</text><rect x="472.3" y="90.3" width="29.4" height="111.7" rx="3" fill="#0E6B63"/><text x="487.0" y="222" text-anchor="middle" font-size="12" fill="#55615C">11</text><rect x="513.7" y="65.1" width="29.4" height="136.9" rx="3" fill="#0E6B63"/><text x="528.4" y="222" text-anchor="middle" font-size="12" fill="#55615C">12</text><rect x="555.1" y="38.2" width="29.4" height="163.8" rx="3" fill="#0E6B63"/><text x="569.9" y="222" text-anchor="middle" font-size="12" fill="#55615C">13</text><rect x="596.6" y="33.9" width="29.4" height="168.1" rx="3" fill="#0E6B63"/><text x="611.3" y="222" text-anchor="middle" font-size="12" fill="#55615C">14</text><line x1="52" x2="640" y1="117.6" y2="117.6" stroke="#15201C" stroke-dasharray="5 4" stroke-width="1.5"/></svg>
+<p style="margin: 0; font-size: 14px; color: #55615C">Días de septiembre. En verde oscuro, días más de un 3% por encima del baseline.</p>
+</section>
+
+<section style="background: #FFFFFF; border: 1px solid #D8DFDB; border-radius: 14px; padding: 22px 26px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-size: 18px; font-weight: 650">Qué atender primero</h2>
+<sc-if value="{{done}}" hint-placeholder-val="{{true}}">
+<ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column">
+<li style="border-top: 1px solid #D8DFDB"><a href="Investigation.dc.html" style="display: flex; align-items: center; gap: 14px; padding: 14px 0; text-decoration: none; color: #15201C"><span style="font-size: 22px; font-weight: 700; width: 22px; color: #B42318">1</span><span style="flex-grow: 1; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 16px; font-weight: 650">M-109 <span style="font-weight: 500; color: #55615C">Tablero principal B</span></span><span style="font-size: 14px; color: #55615C">Consumo +110,7% sin evento conocido</span></span><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 12px; background: #FDECEA; color: #B42318; font-size: 13px; font-weight: 600; white-space: nowrap"><span style="width: 7px; height: 7px; border-radius: 50%; background: #B42318"></span>Real</span></a></li>
+<li style="border-top: 1px solid #D8DFDB"><a href="Anomalies.dc.html" style="display: flex; align-items: center; gap: 14px; padding: 14px 0; text-decoration: none; color: #15201C"><span style="font-size: 22px; font-weight: 700; width: 22px; color: #B42318">2</span><span style="flex-grow: 1; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 16px; font-weight: 650">M-112 <span style="font-weight: 500; color: #55615C">Empaque</span></span><span style="font-size: 14px; color: #55615C">Voltaje y FP erráticos, consumo estable</span></span><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 12px; background: #EEEAFB; color: #5B3DB5; font-size: 13px; font-weight: 600; white-space: nowrap"><span style="width: 7px; height: 7px; border-radius: 50%; background: #5B3DB5"></span>Datos</span></a></li>
+<li style="border-top: 1px solid #D8DFDB"><a href="Anomalies.dc.html" style="display: flex; align-items: center; gap: 14px; padding: 14px 0; text-decoration: none; color: #15201C"><span style="font-size: 22px; font-weight: 700; width: 22px; color: #55615C">3</span><span style="flex-grow: 1; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 16px; font-weight: 650">M-104 <span style="font-weight: 500; color: #55615C">Ensamble</span></span><span style="font-size: 14px; color: #55615C">+47,5% por nueva línea productiva</span></span><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 12px; background: #E5EEF9; color: #1D5AA6; font-size: 13px; font-weight: 600; white-space: nowrap"><span style="width: 7px; height: 7px; border-radius: 50%; background: #1D5AA6"></span>Explicable</span></a></li>
+<li style="border-top: 1px solid #D8DFDB"><a href="Anomalies.dc.html" style="display: flex; align-items: center; gap: 14px; padding: 14px 0; text-decoration: none; color: #15201C"><span style="font-size: 22px; font-weight: 700; width: 22px; color: #55615C">4</span><span style="flex-grow: 1; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 16px; font-weight: 650">M-106 <span style="font-weight: 500; color: #55615C">Extrusión</span></span><span style="font-size: 14px; color: #55615C">Caída de 12 h por parada programada</span></span><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 12px; background: #EBEFED; color: #55615C; font-size: 13px; font-weight: 600; white-space: nowrap"><span style="width: 7px; height: 7px; border-radius: 50%; background: #55615C"></span>Falso positivo</span></a></li>
+</ol>
+</sc-if>
+<sc-if value="{{notDone}}" hint-placeholder-val="{{false}}">
+<div style="flex-grow: 1; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 12px; padding: 12px 0">
+<p style="margin: 0; font-size: 16px; font-weight: 600">Aún no hay prioridades</p>
+<p style="margin: 0; font-size: 14px; color: #55615C; max-width: 340px">Ejecuta el análisis IA para detectar anomalías y ordenarlas según lo que requiere atención primero.</p>
+</div>
+</sc-if>
+</section>
+</div>
+
+<section aria-label="Estado de los medidores" style="background: #FFFFFF; border: 1px solid #D8DFDB; border-radius: 14px; padding: 22px 26px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: baseline; justify-content: space-between"><h2 style="margin: 0; font-size: 18px; font-weight: 650">Estado de los medidores</h2><a href="Meters.dc.html" style="font-size: 15px; font-weight: 600; text-decoration: none">Ver todos</a></div>
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{tiles}}" as="t" hint-placeholder-count="12">
+<a href="{{t.href}}" style="display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 10px; text-decoration: none; {{t.style}}"><span style="font-size: 15px; font-weight: 700">{{t.id}}</span><span style="font-size: 13px; opacity: 0.85">{{t.label}}</span></a>
+</sc-for>
+</div>
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"estadoInicial": {"editor": "enum", "options": ["Completado", "Sin análisis"], "default": "Completado"}, "stepMs": {"editor": "int", "default": 650, "min": 150, "max": 2000, "unit": "ms"}, "$preview": {"width": 1440, "height": 1180}}'>
+class Component extends DCLogic {
+  componentWillUnmount() { if (this.t) clearInterval(this.t); }
+  run() {
+    if ((this.state || {}).phase === 'running') return;
+    if (this.t) clearInterval(this.t);
+    this.setState({ phase: 'running', step: 0 });
+    this.t = setInterval(() => {
+      const n = ((this.state || {}).step || 0) + 1;
+      if (n >= 7) { clearInterval(this.t); this.t = null; this.setState({ phase: 'done', step: 7 }); }
+      else this.setState({ step: n });
+    }, this.props.stepMs ?? 650);
+  }
+  renderVals() {
+    const s = this.state || {};
+    const initial = (this.props.estadoInicial ?? 'Completado') === 'Completado' ? 'done' : 'idle';
+    const phase = s.phase || initial;
+    const step = s.step || 0;
+    const done = phase === 'done', running = phase === 'running';
+    const names = ['Lecturas','Baseline','Detección','Correlación','Eventos','Explicación','Recomendación'];
+    const details = ['4.032 lecturas','288 perfiles horarios','3 cambios, 1 serie irregular','Corriente, FP, voltaje','4 eventos cruzados','4 explicaciones','4 acciones'];
+    const steps = names.map((label, i) => {
+      const st = done ? 'done' : running ? (i < step ? 'done' : i === step ? 'active' : 'pending') : 'pending';
+      const dot = st === 'done' ? 'background: #0E6B63; color: #FFFFFF; border: 0'
+        : st === 'active' ? 'background: #FFFFFF; color: #0E6B63; border: 3px solid #0E6B63'
+        : 'background: #FFFFFF; color: #55615C; border: 2px solid #D8DFDB';
+      return { label, n: String(i + 1), done: st === 'done', notDone: st !== 'done', hasLine: i < 6,
+        dotStyle: dot, lineStyle: 'background: ' + (st === 'done' ? '#0E6B63' : '#D8DFDB'),
+        labelStyle: 'color: ' + (st === 'pending' ? '#55615C' : '#15201C'),
+        detail: st === 'done' ? details[i] : st === 'active' ? 'En curso' : '' };
+    });
+    const tiles = [{"id": "M-101", "name": "Compresores A", "status": "ok", "var": "-0,3%"}, {"id": "M-102", "name": "Hornos línea 1", "status": "ok", "var": "+1,2%"}, {"id": "M-103", "name": "Oficinas", "status": "ok", "var": "+1,8%"}, {"id": "M-104", "name": "Ensamble", "status": "alert", "var": "+47,4%"}, {"id": "M-105", "name": "Bombeo", "status": "ok", "var": "-1,4%"}, {"id": "M-106", "name": "Extrusión", "status": "ok", "var": "+1,1%"}, {"id": "M-107", "name": "Iluminación patio", "status": "ok", "var": "-1,4%"}, {"id": "M-108", "name": "Refrigeración", "status": "ok", "var": "+0,3%"}, {"id": "M-109", "name": "Tablero principal B", "status": "critical", "var": "+110,7%"}, {"id": "M-110", "name": "Talleres", "status": "ok", "var": "-0,1%"}, {"id": "M-111", "name": "Climatización", "status": "ok", "var": "+0,7%"}, {"id": "M-112", "name": "Empaque", "status": "alert", "var": "+0,5%"}].map(t => {
+      const pal = { ok: ['#E5F3EA','#1B7446','Normal'], alert: ['#FDF1DE','#9A5A06','Alerta'], critical: ['#B42318','#FFFFFF','Crítico'] }[t.status];
+      const p = done ? pal : ['#EBEFED','#55615C','Sin evaluar'];
+      return { id: t.id, href: t.id === 'M-109' ? 'MeterDetail.dc.html' : 'Meters.dc.html', label: done ? p[2] + ', ' + t.var : p[2], style: 'background: ' + p[0] + '; color: ' + p[1] };
+    });
+    return {
+      run: () => this.run(), running, done, notDone: !done, steps, tiles,
+      runLabel: running ? 'Analizando…' : 'Run AI Analysis',
+      statusText: done ? 'Completado hoy a las 09:42 en 4,6 s' : running ? 'Paso ' + (step + 1) + ' de 7' : 'Sin ejecutar',
+      kAnom: done ? '4' : '—', kAnomSub: done ? '1 real, 1 de datos, 1 explicable, 1 descartada' : 'Pendiente de análisis',
+      kHigh: done ? '2' : '—', kHighSub: done ? 'M-109 y M-112' : 'Pendiente de análisis', kHighColor: done ? '#B42318' : '#15201C',
+      kConf: done ? '0,87' : '—', kConfSub: done ? 'Media de 4 hallazgos' : 'Pendiente de análisis',
+      kLast: done ? 'Hoy, 09:42' : running ? 'En curso' : 'Sin ejecutar', kLastSub: done ? 'Completado' : running ? 'Analizando lecturas' : 'Pulsa Run AI Analysis'
+    };
+  }
+}
+</script>
+</body>
+</html>
