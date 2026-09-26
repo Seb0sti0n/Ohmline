@@ -13,6 +13,7 @@ import (
 	"github.com/Seb0sti0n/astrophage/backend/internal/config"
 	"github.com/Seb0sti0n/astrophage/backend/internal/db"
 	"github.com/Seb0sti0n/astrophage/backend/internal/engine"
+	"github.com/Seb0sti0n/astrophage/backend/internal/llm"
 )
 
 // StepNames are the visible pipeline stages, in order.
@@ -26,13 +27,14 @@ type Step struct {
 
 type Runner struct {
 	store  *db.Store
+	llm    *llm.Client // may be disabled (no API key): the templates are used
 	engine config.Engine
 	delay  time.Duration // pause after each stage so the progress is visible
 	mu     sync.Mutex    // serializes Start so two requests cannot both create a run
 }
 
-func NewRunner(store *db.Store, cfg config.Config) *Runner {
-	return &Runner{store: store, engine: cfg.Engine, delay: cfg.StepDelay}
+func NewRunner(store *db.Store, cfg config.Config, llm *llm.Client) *Runner {
+	return &Runner{store: store, llm: llm, engine: cfg.Engine, delay: cfg.StepDelay}
 }
 
 func newSteps() []Step {
@@ -67,7 +69,8 @@ func (r *Runner) Start(ctx context.Context) (id int, inProgress bool, err error)
 //
 // The engine is a single pure computation: it runs during the "Detección" stage and covers
 // baseline, correlation, event matching and the template explanations for all meters. The
-// stepper mirrors the pipeline so the operator can follow it; results are persisted at the end.
+// "Explicación" stage then lets the LLM (if enabled) rewrite the texts; it never changes the
+// classification. The stepper mirrors the pipeline; results are persisted at the end.
 func (r *Runner) execute(runID int) {
 	ctx := context.Background()
 	started := time.Now()
@@ -109,6 +112,7 @@ func (r *Runner) execute(runID int) {
 	var readings []engine.Reading
 	var events []engine.Event
 	var results []engine.AnomalyResult
+	llmExplained := 0
 
 	stages := []func() error{
 		func() (err error) { // Lecturas
@@ -122,7 +126,7 @@ func (r *Runner) execute(runID int) {
 		func() error { results = engine.Run(readings, events, r.engine); return nil }, // Detección
 		nil, // Correlación
 		nil, // Eventos
-		nil, // Explicación (template texts come from the engine)
+		func() error { llmExplained = r.llm.Enhance(ctx, results); return nil }, // Explicación
 		nil, // Recomendación
 	}
 	for i, work := range stages {
@@ -133,7 +137,7 @@ func (r *Runner) execute(runID int) {
 	}
 
 	stepsJSON, _ := json.Marshal(steps)
-	summaryJSON, _ := json.Marshal(summarize(results, readings, started))
+	summaryJSON, _ := json.Marshal(summarize(results, readings, llmExplained, r.llm.Enabled(), started))
 	if err := r.store.SaveResults(ctx, runID, results, stepsJSON, summaryJSON); err != nil {
 		fail(err)
 	}
@@ -145,15 +149,18 @@ type Summary struct {
 	HighPriority   int     `json:"high_priority"`
 	AvgConfidence  float64 `json:"avg_confidence"`
 	DurationMS     int64   `json:"duration_ms"`
+	LLMEnabled     bool    `json:"llm_enabled"`
+	LLMExplained   int     `json:"llm_explanations"` // anomalies whose text was written by the LLM
 }
 
 // summarize counts what the dashboard shows: HIGH severity anomalies are the ones needing attention first.
-func summarize(results []engine.AnomalyResult, readings []engine.Reading, started time.Time) Summary {
+func summarize(results []engine.AnomalyResult, readings []engine.Reading, llmExplained int, llmEnabled bool, started time.Time) Summary {
 	meters := map[string]bool{}
 	for _, r := range readings {
 		meters[r.MeterID] = true
 	}
-	s := Summary{MetersAnalyzed: len(meters), Anomalies: len(results), DurationMS: time.Since(started).Milliseconds()}
+	s := Summary{MetersAnalyzed: len(meters), Anomalies: len(results), DurationMS: time.Since(started).Milliseconds(),
+		LLMEnabled: llmEnabled, LLMExplained: llmExplained}
 	total := 0.0
 	for _, r := range results {
 		if r.Severity == engine.High {

@@ -17,6 +17,7 @@ import (
 	"github.com/Seb0sti0n/astrophage/backend/internal/analysis"
 	"github.com/Seb0sti0n/astrophage/backend/internal/config"
 	"github.com/Seb0sti0n/astrophage/backend/internal/db"
+	"github.com/Seb0sti0n/astrophage/backend/internal/llm"
 	"github.com/Seb0sti0n/astrophage/backend/internal/seed"
 )
 
@@ -39,6 +40,12 @@ func testDatabaseURL() string {
 }
 
 func newEnv(t *testing.T, stepDelay time.Duration) *testEnv {
+	t.Helper()
+	return newEnvLLM(t, stepDelay, config.LLM{})
+}
+
+// newEnvLLM is newEnv with an LLM configuration (an empty one disables the LLM).
+func newEnvLLM(t *testing.T, stepDelay time.Duration, llmCfg config.LLM) *testEnv {
 	t.Helper()
 	ctx := context.Background()
 	url := testDatabaseURL()
@@ -69,9 +76,9 @@ func newEnv(t *testing.T, stepDelay time.Duration) *testEnv {
 		t.Fatal(err)
 	}
 
-	cfg := config.Config{JWTSecret: testSecret, CORSOrigin: "http://localhost:5173", StepDelay: stepDelay, Engine: config.DefaultEngine()}
+	cfg := config.Config{JWTSecret: testSecret, CORSOrigin: "http://localhost:5173", StepDelay: stepDelay, Engine: config.DefaultEngine(), LLM: llmCfg}
 	store := db.NewStore(pool)
-	env := &testEnv{t: t, store: store, router: NewServer(store, analysis.NewRunner(store, cfg), cfg).Router()}
+	env := &testEnv{t: t, store: store, router: NewServer(store, analysis.NewRunner(store, cfg, llm.New(cfg.LLM)), cfg).Router()}
 
 	code, body := env.do("POST", "/api/auth/login", `{"email":"demo@energy.io","password":"demo123"}`, "")
 	if code != 200 {

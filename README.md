@@ -70,6 +70,23 @@ deterministic templates in Spanish (`explain.go`); an LLM can rewrite them later
 Limitations: thresholds are tuned to this dataset; the 7-day baseline is short and assumes it contains no
 anomalies (true here); one anomaly is reported per meter (the highest-priority window).
 
+## LLM explanations
+
+The engine decides type, severity, priority and confidence; the LLM only **writes** `reason`, `explanation` and
+`recommended_action` from the evidence, during the "Explicación" stage. It never changes the classification.
+
+- Any OpenAI-compatible API works; configure `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` in `.env` (defaults: Groq,
+  `openai/gpt-oss-20b`, `LLM_REASONING_EFFORT=low`, which is only for reasoning models — leave it empty otherwise).
+- Without `LLM_API_KEY` the app makes no external calls and uses the deterministic templates in
+  `engine/explain.go`. `explanation_source` (`LLM` or `TEMPLATE`) is stored per anomaly and shown in the UI.
+- The answer is validated before it is used: valid JSON with the three fields, `reason` one sentence,
+  `explanation` at most 4, and **every number it cites must come from the evidence** (allowing rounding), so the
+  model cannot invent figures. If a call fails, times out (8 s), is rate limited, or the answer is rejected, that
+  anomaly keeps its template text (after one retry). The analysis always completes.
+- The prompt is small (~1k tokens) because free tiers limit tokens per minute (Groq: 8.000 for this model). One
+  analysis fits; running several in the same minute makes some anomalies fall back to templates.
+- Calls run in parallel, one per anomaly (typically about 1–2 s in total).
+
 ## API
 
 REST under `/api`, documented in [backend/openapi.yaml](backend/openapi.yaml). JWT auth (`POST /api/auth/login`) on
@@ -93,4 +110,4 @@ Meter status is derived from the latest analysis: `REAL_ANOMALY` → CRITICAL, `
 
 ## Status
 
-Phases 1 (scaffolding), 2 (data), 3 (analysis engine) and 4 (API) done. Next: LLM layer, frontend.
+Phases 1 (scaffolding), 2 (data), 3 (analysis engine), 4 (API) and 5 (LLM layer) done. Next: frontend.

@@ -266,7 +266,7 @@ components:
         status: { $ref: "#/components/schemas/AnomalyStatus" }
         window_start: { type: string, format: date-time, nullable: true }
         window_end: { type: string, format: date-time, nullable: true }
-        explanation_source: { type: string, enum: [LLM, TEMPLATE] }
+        explanation_source: { type: string, enum: [LLM, TEMPLATE], description: Who wrote reason, explanation and recommended_action }
         evidence:
           type: object
           description: Window, metrics vs baseline, changed variables, related events, rules fired, priority and confidence breakdowns, and quality flags for DATA_QUALITY.
@@ -295,6 +295,8 @@ components:
             high_priority: { type: integer }
             avg_confidence: { type: number }
             duration_ms: { type: integer }
+            llm_enabled: { type: boolean, description: Whether an LLM API key is configured }
+            llm_explanations: { type: integer, description: Anomalies whose text was written by the LLM (the rest use templates) }
             error: { type: string }
         started_at: { type: string, format: date-time }
         finished_at: { type: string, format: date-time, nullable: true }

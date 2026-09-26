@@ -51,7 +51,14 @@ type AnomalyResult struct {
 	WindowStart       time.Time   `json:"window_start"`
 	WindowEnd         time.Time   `json:"window_end"`
 	Evidence          Evidence    `json:"evidence"`
+	// ExplanationSource says who wrote reason/explanation/action: the engine templates or an LLM.
+	ExplanationSource string `json:"explanation_source"`
 }
+
+const (
+	SourceTemplate = "TEMPLATE"
+	SourceLLM      = "LLM"
+)
 
 type Evidence struct {
 	Kind                string             `json:"kind"` // "consumption_shift" or "data_quality"

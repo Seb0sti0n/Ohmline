@@ -112,9 +112,9 @@ func (s *Store) SaveResults(ctx context.Context, runID int, results []engine.Ano
 		_, err = tx.Exec(ctx, `INSERT INTO anomalies
 			(meter_id, analysis_run_id, type, severity, confidence, priority_score, reason, explanation,
 			 recommended_action, window_start, window_end, evidence, explanation_source)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'TEMPLATE')`,
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
 			r.MeterID, runID, r.Type, r.Severity, r.Confidence, r.PriorityScore, r.Reason, r.Explanation,
-			r.RecommendedAction, r.WindowStart, r.WindowEnd, evidence)
+			r.RecommendedAction, r.WindowStart, r.WindowEnd, evidence, r.ExplanationSource)
 		if err != nil {
 			return err
 		}

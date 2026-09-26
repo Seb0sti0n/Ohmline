@@ -9,6 +9,7 @@ import (
 	"github.com/Seb0sti0n/astrophage/backend/internal/config"
 	"github.com/Seb0sti0n/astrophage/backend/internal/db"
 	apihttp "github.com/Seb0sti0n/astrophage/backend/internal/http"
+	"github.com/Seb0sti0n/astrophage/backend/internal/llm"
 )
 
 func main() {
@@ -25,7 +26,13 @@ func main() {
 	if err := store.FailStaleRuns(ctx); err != nil { // runs left in progress by a previous process
 		log.Fatalf("cleanup: %v", err)
 	}
-	server := apihttp.NewServer(store, analysis.NewRunner(store, cfg), cfg)
+	explainer := llm.New(cfg.LLM)
+	if explainer.Enabled() {
+		log.Printf("LLM explanations enabled (model %s)", cfg.LLM.Model)
+	} else {
+		log.Printf("LLM_API_KEY not set: using template explanations")
+	}
+	server := apihttp.NewServer(store, analysis.NewRunner(store, cfg, explainer), cfg)
 
 	log.Printf("API listening on :%s", cfg.Port)
 	log.Fatal(http.ListenAndServe(":"+cfg.Port, server.Router()))

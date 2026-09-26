@@ -140,6 +140,7 @@ func consumptionResult(id string, rs []Reading, b Baseline, events []Event, w Wi
 			ConfidenceBreakdown: confParts,
 		},
 	}
+	res.ExplanationSource = SourceTemplate
 	explainConsumption(&res, match)
 	return res
 }
@@ -202,6 +203,7 @@ func qualityResult(id string, rs []Reading, b Baseline, events []Event, q Qualit
 			ConfidenceBreakdown: confParts,
 		},
 	}
+	res.ExplanationSource = SourceTemplate
 	explainQuality(&res)
 	return res
 }
