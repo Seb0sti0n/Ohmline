@@ -24,17 +24,26 @@ docs/       original brief
 
 ## Run locally
 
-Requirements: Go 1.22+, Node 20+, a local PostgreSQL.
+Requirements: Go 1.24+ (the toolchain downloads the exact version in `go.mod` automatically), Node 20+, a local PostgreSQL.
 
 ```bash
 cp .env.example .env     # adjust DATABASE_URL if your Postgres credentials differ
 make db                  # creates the `astrophage` database
+make seed                # applies migrations, loads data/*.csv and the demo user
 make api                 # http://localhost:8080/api/health
 make web                 # http://localhost:5173
 ```
+
+### Data and demo user
+
+`make seed` is idempotent (it truncates and reloads). It validates the CSVs (duplicates, gaps in the hourly grid,
+negative or empty values) and prints any issues; the current dataset has none. Result: 12 meters, 4.032 readings,
+4 events. Demo login: `demo@energy.io` / `demo123`. The seed does not run the analysis.
+
+Migrations live in `backend/migrations` (embedded in the binary and applied by the seed command).
 
 If `design/tokens.json` changes, regenerate the Tailwind theme with `cd frontend && npm run tokens`.
 
 ## Status
 
-Phase 1 (scaffolding) done. Next: data ingestion, analysis engine, API, LLM layer, frontend.
+Phases 1 (scaffolding) and 2 (data) done. Next: analysis engine, API, LLM layer, frontend.
