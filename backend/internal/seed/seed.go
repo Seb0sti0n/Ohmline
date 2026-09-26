@@ -22,12 +22,28 @@ const (
 	DemoPassword = "demo123"
 )
 
-// Sites are assigned to meters in order; names are demo data.
-var sites = []string{
-	"Planta Norte – Línea 1", "Planta Norte – Línea 2", "Planta Norte – Compresores",
-	"Planta Sur – Línea 1", "Planta Sur – Línea 2", "Planta Sur – Refrigeración",
-	"Centro de distribución – Muelles", "Centro de distribución – Oficinas", "Edificio administrativo",
-	"Taller de mantenimiento", "Bodega central", "Subestación este",
+// profiles are the demo names and locations of the meters (from the approved design). A meter that
+// is not listed gets a generic name so any CSV can still be loaded.
+var profiles = map[string]struct{ Name, Location string }{
+	"M-101": {"Compresores A", "Planta Norte"},
+	"M-102": {"Hornos línea 1", "Planta Norte"},
+	"M-103": {"Oficinas", "Sede administrativa"},
+	"M-104": {"Ensamble", "Planta Sur"},
+	"M-105": {"Bombeo", "Planta Norte"},
+	"M-106": {"Extrusión", "Planta Sur"},
+	"M-107": {"Iluminación patio", "Centro logístico"},
+	"M-108": {"Refrigeración", "Centro logístico"},
+	"M-109": {"Tablero principal B", "Planta Sur"},
+	"M-110": {"Talleres", "Planta Norte"},
+	"M-111": {"Climatización", "Sede administrativa"},
+	"M-112": {"Empaque", "Centro logístico"},
+}
+
+func profile(id string) (name, location string) {
+	if p, ok := profiles[id]; ok {
+		return p.Name, p.Location
+	}
+	return "Medidor " + id, "Sin ubicación"
 }
 
 type Summary struct {
@@ -93,7 +109,8 @@ func Run(ctx context.Context, pool *pgxpool.Pool, dataDir string) (*Summary, err
 
 	meterRows := make([][]any, len(meterIDs))
 	for i, id := range meterIDs {
-		meterRows[i] = []any{id, "Medidor " + id, sites[i%len(sites)]}
+		name, location := profile(id)
+		meterRows[i] = []any{id, name, location}
 	}
 	if _, err := tx.CopyFrom(ctx, pgx.Identifier{"meters"}, []string{"meter_id", "name", "location"}, pgx.CopyFromRows(meterRows)); err != nil {
 		return nil, fmt.Errorf("meters: %w", err)

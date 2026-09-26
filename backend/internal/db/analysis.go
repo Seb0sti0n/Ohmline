@@ -52,6 +52,13 @@ func (s *Store) LatestRun(ctx context.Context) (*Run, error) {
 	return scanRun(s.pool.QueryRow(ctx, `SELECT `+runCols+` FROM analysis_runs ORDER BY id DESC LIMIT 1`))
 }
 
+// HasCompletedRun reports whether at least one analysis has completed.
+func (s *Store) HasCompletedRun(ctx context.Context) (bool, error) {
+	var ok bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM analysis_runs WHERE status = 'COMPLETED')`).Scan(&ok)
+	return ok, err
+}
+
 // ActiveRunID returns the id of a run that is still in progress, if any.
 func (s *Store) ActiveRunID(ctx context.Context) (int, bool, error) {
 	var id int

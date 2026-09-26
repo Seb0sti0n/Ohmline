@@ -137,7 +137,7 @@ func (r *Runner) execute(runID int) {
 	}
 
 	stepsJSON, _ := json.Marshal(steps)
-	summaryJSON, _ := json.Marshal(summarize(results, readings, llmExplained, r.llm.Enabled(), started))
+	summaryJSON, _ := json.Marshal(summarize(results, readings, len(events), llmExplained, r.llm.Enabled(), started))
 	if err := r.store.SaveResults(ctx, runID, results, stepsJSON, summaryJSON); err != nil {
 		fail(err)
 	}
@@ -145,6 +145,8 @@ func (r *Runner) execute(runID int) {
 
 type Summary struct {
 	MetersAnalyzed int     `json:"meters_analyzed"`
+	ReadingsCount  int     `json:"readings_count"`
+	EventsCount    int     `json:"events_count"`
 	Anomalies      int     `json:"anomalies"`
 	HighPriority   int     `json:"high_priority"`
 	AvgConfidence  float64 `json:"avg_confidence"`
@@ -154,12 +156,12 @@ type Summary struct {
 }
 
 // summarize counts what the dashboard shows: HIGH severity anomalies are the ones needing attention first.
-func summarize(results []engine.AnomalyResult, readings []engine.Reading, llmExplained int, llmEnabled bool, started time.Time) Summary {
+func summarize(results []engine.AnomalyResult, readings []engine.Reading, events, llmExplained int, llmEnabled bool, started time.Time) Summary {
 	meters := map[string]bool{}
 	for _, r := range readings {
 		meters[r.MeterID] = true
 	}
-	s := Summary{MetersAnalyzed: len(meters), Anomalies: len(results), DurationMS: time.Since(started).Milliseconds(),
+	s := Summary{MetersAnalyzed: len(meters), ReadingsCount: len(readings), EventsCount: events, Anomalies: len(results), DurationMS: time.Since(started).Milliseconds(),
 		LLMEnabled: llmEnabled, LLMExplained: llmExplained}
 	total := 0.0
 	for _, r := range results {

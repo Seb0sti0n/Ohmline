@@ -53,7 +53,7 @@ paths:
       parameters:
         - { name: status, in: query, schema: { type: string, enum: [ALL, OK, ALERT, CRITICAL] }, description: Case-insensitive }
         - { name: search, in: query, schema: { type: string }, description: Substring of meter_id }
-        - { name: sort, in: query, schema: { type: string, enum: [consumption, variation, severity] } }
+        - { name: sort, in: query, schema: { type: string, enum: [consumption, variation, severity] }, description: "`variation` sorts by absolute value (the biggest change first, up or down)" }
         - { name: order, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/MeterSummary" } } } } }
@@ -183,8 +183,11 @@ paths:
                 properties:
                   meters_count: { type: integer }
                   total_consumption_kwh: { type: number, description: Whole period }
+                  has_results: { type: boolean, description: A completed analysis exists }
                   anomalies_count: { type: integer }
                   high_priority_count: { type: integer, description: Anomalies with HIGH severity }
+                  high_priority_meters: { type: array, items: { type: string }, description: Meters of the HIGH severity anomalies, by priority }
+                  anomalies_by_type: { type: object, additionalProperties: { type: integer }, description: Count per anomaly type }
                   avg_confidence: { type: number, nullable: true }
                   last_analysis: { allOf: [{ $ref: "#/components/schemas/AnalysisRun" }], nullable: true }
                   daily_consumption:
@@ -228,6 +231,7 @@ components:
         consumption_kwh: { type: number, description: Last 24 hours }
         baseline_kwh: { type: number, description: Expected daily consumption }
         variation_pct: { type: number }
+        daily_kwh: { type: array, items: { type: number }, description: Consumption per UTC day (14 values), for the sparkline }
         anomaly: { allOf: [{ $ref: "#/components/schemas/Anomaly" }], nullable: true }
 
     ReadingPoint:
@@ -291,6 +295,8 @@ components:
           description: Set when finished. `error` is set instead if it failed.
           properties:
             meters_analyzed: { type: integer }
+            readings_count: { type: integer }
+            events_count: { type: integer }
             anomalies: { type: integer }
             high_priority: { type: integer }
             avg_confidence: { type: number }

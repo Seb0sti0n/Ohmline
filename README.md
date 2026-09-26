@@ -38,11 +38,31 @@ make web                 # http://localhost:5173
 
 `make seed` is idempotent (it truncates and reloads). It validates the CSVs (duplicates, gaps in the hourly grid,
 negative or empty values) and prints any issues; the current dataset has none. Result: 12 meters, 4.032 readings,
-4 events. Demo login: `demo@energy.io` / `demo123`. The seed does not run the analysis.
+4 events, with the demo names and locations of the design (e.g. M-109 "Tablero principal B", Planta Sur). Demo login: `demo@energy.io` / `demo123`. The seed does not run the analysis.
 
 Migrations live in `backend/migrations` (embedded in the binary and applied by the seed command).
 
 If `design/tokens.json` changes, regenerate the Tailwind theme with `cd frontend && npm run tokens`.
+
+## Frontend
+
+Vue 3 + Vite + TypeScript, Pinia, Vue Router, Tailwind v4 and ECharts. The UI follows the approved mockups in
+`design/` (the product is branded **Ohmline** there). `npm run tokens` regenerates `src/assets/theme.css` from
+`design/tokens.json` (color aliases such as `{ink-muted}` are resolved), so classes like `bg-surface`,
+`text-ink-muted` or `rounded-lg` come straight from the design tokens.
+
+Screens so far: login (demo credentials prefilled), the dashboard (analysis card with the 7-stage stepper, KPI
+strip, daily consumption chart with baseline, "Qué atender primero", meter status tiles) and the meters table
+(status filters with counters, `meter_id` search, sort by consumption / variation / status, 14-day sparklines).
+Filters, search and sorting are sent to the API (`GET /meters?status=&search=&sort=&order=`); the counters come from
+an unfiltered request. Meter detail, anomalies and investigation are placeholders until the next phase.
+
+How it behaves: **Run AI Analysis** starts the run and polls it every 500 ms; the stepper follows the real stage of
+the run, and reloading the page mid-run resumes following it. An expired or invalid token (401) clears the session and
+returns to the login. Logic that can go wrong silently (formatting, stepper and KPI builders, polling and
+cancellation, stale responses, route guard, login errors) is covered by Vitest (`cd frontend && npm test`).
+
+Not included: ESLint (the strict `vue-tsc` type-check and Prettier are used instead).
 
 ## Analysis engine
 
@@ -110,4 +130,4 @@ Meter status is derived from the latest analysis: `REAL_ANOMALY` → CRITICAL, `
 
 ## Status
 
-Phases 1 (scaffolding), 2 (data), 3 (analysis engine), 4 (API) and 5 (LLM layer) done. Next: frontend.
+Phases 1 (scaffolding), 2 (data), 3 (analysis engine), 4 (API), 5 (LLM layer) and 6 (frontend base) done. Next: meter detail, anomalies and investigation screens.

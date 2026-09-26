@@ -130,6 +130,8 @@ type run struct {
 		Anomalies      int
 		HighPriority   int `json:"high_priority"`
 		MetersAnalyzed int `json:"meters_analyzed"`
+		ReadingsCount  int `json:"readings_count"`
+		EventsCount    int `json:"events_count"`
 	}
 }
 
@@ -166,6 +168,9 @@ type meterRow struct {
 	Baseline     float64 `json:"baseline_kwh"`
 	VariationPct float64 `json:"variation_pct"`
 	Anomaly      *struct{ Type, Severity string }
+	Name         string    `json:"name"`
+	Location     string    `json:"location"`
+	DailyKWh     []float64 `json:"daily_kwh"`
 }
 
 func meterIDs(ms []meterRow) []string {
@@ -242,6 +247,29 @@ func TestBeforeAnyAnalysis(t *testing.T) {
 	if byVar[1].MeterID != "M-104" {
 		t.Errorf("second by variation = %s, want M-104", byVar[1].MeterID)
 	}
+	// Variation sorts by size of the change, up or down: M-110 (-0.1%) is the smallest, not M-105 (-1.4%).
+	smallest := decode[[]meterRow](t, e.mustGet("/api/meters?sort=variation&order=asc", 200))
+	if smallest[0].MeterID != "M-110" {
+		t.Errorf("smallest variation = %s, want M-110 (sorted by absolute value)", smallest[0].MeterID)
+	}
+	byID := map[string]meterRow{}
+	for _, m := range ms {
+		byID[m.MeterID] = m
+	}
+	if m := byID["M-109"]; m.Name != "Tablero principal B" || m.Location != "Planta Sur" {
+		t.Errorf("M-109 name/location = %q / %q, want the design's", m.Name, m.Location)
+	}
+	if m := byID["M-101"]; m.Name != "Compresores A" || m.Location != "Planta Norte" {
+		t.Errorf("M-101 name/location = %q / %q", m.Name, m.Location)
+	}
+	for _, m := range ms {
+		if len(m.DailyKWh) != 14 {
+			t.Fatalf("%s has %d daily points, want 14", m.MeterID, len(m.DailyKWh))
+		}
+	}
+	if d := byID["M-109"].DailyKWh; d[13] < 2200 || d[13] > 2215 || d[0] > 1100 {
+		t.Errorf("M-109 daily series = %v", d)
+	}
 	asc := decode[[]meterRow](t, e.mustGet("/api/meters?sort=consumption&order=asc", 200))
 	if asc[0].MeterID != "M-107" || asc[11].MeterID != "M-109" {
 		t.Errorf("consumption asc = %v", meterIDs(asc))
@@ -295,6 +323,9 @@ func TestAnalysisCycle(t *testing.T) {
 		if s.Status != "DONE" {
 			t.Errorf("step %s is %s", s.Name, s.Status)
 		}
+	}
+	if r.Summary.ReadingsCount != 4032 || r.Summary.EventsCount != 4 {
+		t.Errorf("counts = %d readings, %d events, want 4032 and 4", r.Summary.ReadingsCount, r.Summary.EventsCount)
 	}
 	if r.Summary.Anomalies != 4 || r.Summary.HighPriority != 2 || r.Summary.MetersAnalyzed != 12 {
 		t.Errorf("summary = %+v", r.Summary)
@@ -391,14 +422,24 @@ func TestAnalysisCycle(t *testing.T) {
 
 	// Dashboard.
 	s := decode[struct {
-		Count   int      `json:"anomalies_count"`
-		High    int      `json:"high_priority_count"`
-		AvgConf *float64 `json:"avg_confidence"`
-		Last    *run     `json:"last_analysis"`
-		Top     []struct {
+		Count      int            `json:"anomalies_count"`
+		High       int            `json:"high_priority_count"`
+		AvgConf    *float64       `json:"avg_confidence"`
+		Last       *run           `json:"last_analysis"`
+		HasResults bool           `json:"has_results"`
+		HighMeters []string       `json:"high_priority_meters"`
+		ByType     map[string]int `json:"anomalies_by_type"`
+		Top        []struct {
 			MeterID string `json:"meter_id"`
 		} `json:"top_priorities"`
 	}](t, e.mustGet("/api/dashboard/summary", 200))
+	if !s.HasResults {
+		t.Errorf("has_results must be true after a completed analysis")
+	}
+	if !eq(s.HighMeters, []string{"M-109", "M-112"}) || s.ByType["REAL_ANOMALY"] != 1 || s.ByType["DATA_QUALITY"] != 1 ||
+		s.ByType["EXPLAINABLE_ANOMALY"] != 1 || s.ByType["FALSE_POSITIVE"] != 1 {
+		t.Errorf("high meters = %v, by type = %v", s.HighMeters, s.ByType)
+	}
 	if s.Count != 4 || s.High != 2 || s.AvgConf == nil || *s.AvgConf < 0.85 || s.Last == nil || s.Last.Status != "COMPLETED" || len(s.Top) != 4 || s.Top[0].MeterID != "M-109" {
 		t.Errorf("summary = %+v", s)
 	}

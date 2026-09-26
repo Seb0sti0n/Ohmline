@@ -42,6 +42,11 @@ func (s *Server) dashboardSummary(w http.ResponseWriter, r *http.Request) {
 		serverError(w, r, err)
 		return
 	}
+	hasResults, err := s.store.HasCompletedRun(ctx)
+	if err != nil {
+		serverError(w, r, err)
+		return
+	}
 
 	total := 0.0
 	perDay := map[string]float64{}
@@ -64,10 +69,14 @@ func (s *Server) dashboardSummary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	high, confSum := 0, 0.0
+	byType := map[string]int{}
+	highMeters := []string{} // by priority order, for "M-109 y M-112"
 	for _, a := range anomalies {
 		if a.Severity == string(engine.High) {
 			high++
+			highMeters = append(highMeters, a.MeterID)
 		}
+		byType[a.Type]++
 		confSum += a.Confidence
 	}
 	var avgConf *float64
@@ -88,8 +97,11 @@ func (s *Server) dashboardSummary(w http.ResponseWriter, r *http.Request) {
 		"total_consumption_kwh": r1(total),
 		"anomalies_count":       len(anomalies),
 		"high_priority_count":   high,
+		"high_priority_meters":  highMeters,
+		"anomalies_by_type":     byType,
 		"avg_confidence":        avgConf,
 		"last_analysis":         run,
+		"has_results":           hasResults, // a completed analysis exists, so statuses and anomalies are meaningful
 		"daily_consumption":     daily,
 		"top_priorities":        top,
 		"meters":                meters,

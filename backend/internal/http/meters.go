@@ -19,7 +19,8 @@ type meterSummary struct {
 	ConsumptionKWh float64     `json:"consumption_kwh"` // last 24 h
 	BaselineKWh    float64     `json:"baseline_kwh"`    // expected daily consumption
 	VariationPct   float64     `json:"variation_pct"`
-	Anomaly        *db.Anomaly `json:"anomaly"` // from the latest completed analysis, or null
+	DailyKWh       []float64   `json:"daily_kwh"` // consumption per UTC day, for the sparkline
+	Anomaly        *db.Anomaly `json:"anomaly"`   // from the latest completed analysis, or null
 }
 
 func r1(v float64) float64 { return math.Round(v*10) / 10 }
@@ -44,7 +45,25 @@ func summarizeMeter(m db.Meter, rs []engine.Reading, cfg config.Engine, a *db.An
 		s.VariationPct = (s.ConsumptionKWh/b.DailyKWh - 1) * 100
 	}
 	s.ConsumptionKWh, s.BaselineKWh, s.VariationPct = r1(s.ConsumptionKWh), r1(s.BaselineKWh), r1(s.VariationPct)
+	s.DailyKWh = dailyTotals(rs)
 	return s
+}
+
+// dailyTotals sums consumption per UTC day, in order.
+func dailyTotals(rs []engine.Reading) []float64 {
+	out := []float64{}
+	var day time.Time
+	for _, r := range rs {
+		d := r.Timestamp.Truncate(24 * time.Hour)
+		if len(out) == 0 || !d.Equal(day) {
+			out, day = append(out, 0), d
+		}
+		out[len(out)-1] += r.ConsumptionKWh
+	}
+	for i := range out {
+		out[i] = r1(out[i])
+	}
+	return out
 }
 
 var severityRank = map[string]int{"HIGH": 3, "MEDIUM": 2, "LOW": 1}
@@ -119,7 +138,7 @@ func (s *Server) listMeters(w http.ResponseWriter, r *http.Request) {
 			case "consumption":
 				return m.ConsumptionKWh
 			case "variation":
-				return m.VariationPct
+				return math.Abs(m.VariationPct) // the biggest change first, up or down
 			}
 			if m.Anomaly == nil {
 				return 0
