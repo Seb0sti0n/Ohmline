@@ -1,6 +1,16 @@
 import axios, { AxiosError } from 'axios'
 import { clearSession, getToken } from './session'
-import type { AnalysisRun, DashboardSummary, MeterQuery, MeterSummary } from '@/types/api'
+import type {
+  AnalysisRun,
+  Anomaly,
+  AnomalyQuery,
+  AnomalyStatus,
+  DashboardSummary,
+  MeterEvent,
+  MeterQuery,
+  MeterSummary,
+  ReadingPoint,
+} from '@/types/api'
 
 export const api = axios.create({ baseURL: '/api' })
 
@@ -73,3 +83,21 @@ export async function getLatestAnalysis(): Promise<AnalysisRun | null> {
     throw e
   }
 }
+
+export const getMeter = (id: string) => api.get<MeterSummary>(`/meters/${id}`).then((r) => r.data)
+
+export const getReadings = (id: string, granularity: 'hour' | 'day' = 'hour') =>
+  api
+    .get<{ points: ReadingPoint[] }>(`/meters/${id}/readings`, { params: { granularity } })
+    .then((r) => r.data.points)
+
+export const getMeterEvents = (id: string) =>
+  api.get<MeterEvent[]>(`/meters/${id}/events`).then((r) => r.data)
+
+export const getAnomalies = (params: AnomalyQuery = {}) =>
+  api.get<Anomaly[]>('/anomalies', { params }).then((r) => r.data)
+
+export const getAnomaly = (id: number) => api.get<Anomaly>(`/anomalies/${id}`).then((r) => r.data)
+
+export const patchAnomalyStatus = (id: number, status: AnomalyStatus) =>
+  api.patch<Anomaly>(`/anomalies/${id}`, { status }).then((r) => r.data)

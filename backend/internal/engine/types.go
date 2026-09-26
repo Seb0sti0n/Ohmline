@@ -70,6 +70,9 @@ type Evidence struct {
 	Quality             *QualityInfo       `json:"quality,omitempty"`
 	PriorityBreakdown   map[string]float64 `json:"priority_breakdown"`
 	ConfidenceBreakdown map[string]float64 `json:"confidence_breakdown"`
+	// Maximum contribution of each component, to show the breakdowns as fractions.
+	PriorityWeights   map[string]float64 `json:"priority_weights"`
+	ConfidenceWeights map[string]float64 `json:"confidence_weights"`
 }
 
 type WindowInfo struct {

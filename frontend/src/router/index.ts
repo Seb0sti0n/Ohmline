@@ -20,20 +20,17 @@ const router = createRouter({
         {
           path: 'meters/:meterId',
           name: 'meter-detail',
-          component: () => import('@/views/PlaceholderView.vue'),
-          props: { title: 'Detalle del medidor' },
+          component: () => import('@/views/MeterDetailView.vue'),
         },
         {
           path: 'anomalies',
           name: 'anomalies',
-          component: () => import('@/views/PlaceholderView.vue'),
-          props: { title: 'Anomalías IA' },
+          component: () => import('@/views/AnomaliesView.vue'),
         },
         {
           path: 'anomalies/:id',
           name: 'investigation',
-          component: () => import('@/views/PlaceholderView.vue'),
-          props: { title: 'Investigación' },
+          component: () => import('@/views/InvestigationView.vue'),
         },
       ],
     },

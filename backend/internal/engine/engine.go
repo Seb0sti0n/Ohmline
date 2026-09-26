@@ -100,7 +100,7 @@ func consumptionResult(id string, rs []Reading, b Baseline, events []Event, w Wi
 		rules = append(rules, "Deterioro eléctrico: cambió el factor de potencia o el voltaje")
 	}
 	if match != nil {
-		rules = append(rules, fmt.Sprintf("Evento compatible: %s (%s)", match.Type, match.Reason))
+		rules = append(rules, fmt.Sprintf("Evento compatible (%s): %s", eventTypeES(match.Type), match.Reason))
 	} else {
 		rules = append(rules, "Sin evento compatible que explique el cambio")
 	}
@@ -138,6 +138,8 @@ func consumptionResult(id string, rs []Reading, b Baseline, events []Event, w Wi
 			RulesFired:          rules,
 			PriorityBreakdown:   scoreParts,
 			ConfidenceBreakdown: confParts,
+			PriorityWeights:     copyWeights(priorityWeights),
+			ConfidenceWeights:   copyWeights(confidenceWeights),
 		},
 	}
 	res.ExplanationSource = SourceTemplate
@@ -169,11 +171,11 @@ func qualityResult(id string, rs []Reading, b Baseline, events []Event, q Qualit
 	flagFraction := float64(info.FlagHours) / float64(info.WindowHours)
 
 	rules := []string{
-		fmt.Sprintf("Flags de calidad recurrentes: %d horas con flags en %d h (máx. %d en 24 h)", info.FlagHours, info.WindowHours, info.FlagsIn24h),
+		fmt.Sprintf("Indicadores de calidad recurrentes: %d horas con indicadores en %d h (máx. %d en 24 h)", info.FlagHours, info.WindowHours, info.FlagsIn24h),
 		fmt.Sprintf("Consumo sin cambio persistente (variación media %s)", signedPct(m.WindowVariation)),
 	}
 	if len(matches) > 0 {
-		rules = append(rules, "Un evento DATA_QUALITY corrobora el hallazgo (no lo origina)")
+		rules = append(rules, "Un evento de calidad de datos corrobora el hallazgo (no lo origina)")
 	}
 
 	signals := len(info.ByKind)
@@ -201,6 +203,8 @@ func qualityResult(id string, rs []Reading, b Baseline, events []Event, q Qualit
 			Quality:             &info,
 			PriorityBreakdown:   scoreParts,
 			ConfidenceBreakdown: confParts,
+			PriorityWeights:     copyWeights(priorityWeights),
+			ConfidenceWeights:   copyWeights(confidenceWeights),
 		},
 	}
 	res.ExplanationSource = SourceTemplate
@@ -213,4 +217,17 @@ func abs(v float64) float64 {
 		return -v
 	}
 	return v
+}
+
+// eventTypeES names an event type for the operator (the texts of the engine are Spanish).
+func eventTypeES(t string) string {
+	switch t {
+	case EventScheduledOutage:
+		return "parada programada"
+	case EventOperationalChange:
+		return "cambio operativo"
+	case EventDataQuality:
+		return "calidad de datos"
+	}
+	return "sin clasificar"
 }

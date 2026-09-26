@@ -1,4 +1,4 @@
-import type { AnomalyType, MeterStatus, Severity } from '@/types/api'
+import type { AnomalyStatus, AnomalyType, EventType, MeterStatus, Severity } from '@/types/api'
 
 // Full class names (not built from pieces) so Tailwind can see them.
 
@@ -54,3 +54,61 @@ export const SEVERITY_LABEL: Record<Severity, string> = {
   MEDIUM: 'Media',
   LOW: 'Baja',
 }
+
+export const SEVERITY_BADGE: Record<Severity, string> = {
+  HIGH: 'bg-status-critical-bg text-status-critical',
+  MEDIUM: 'bg-status-alert-bg text-status-alert',
+  LOW: 'bg-type-false-positive-bg text-type-false-positive',
+}
+
+/** The text of the action button for each anomaly type (Anomalías screen). */
+export const ACTION_LABEL: Record<AnomalyType, string> = {
+  REAL_ANOMALY: 'Investigar',
+  DATA_QUALITY: 'Validar medidor',
+  EXPLAINABLE_ANOMALY: 'Validar operación',
+  FALSE_POSITIVE: 'No escalar',
+}
+
+export const TYPE_HELP: Record<AnomalyType, string> = {
+  REAL_ANOMALY: 'Cambio persistente sin evento que lo explique.',
+  DATA_QUALITY: 'Lecturas eléctricas incoherentes; no confiar hasta validar.',
+  EXPLAINABLE_ANOMALY: 'Cambio real que coincide con un evento operativo.',
+  FALSE_POSITIVE: 'Desviación temporal explicada por un evento programado.',
+}
+
+export const ANOMALY_STATUS_LABEL: Record<AnomalyStatus, string> = {
+  OPEN: 'Abierta',
+  ACKNOWLEDGED: 'En investigación',
+  RESOLVED: 'Resuelta',
+}
+
+export const ANOMALY_STATUS_BADGE: Record<AnomalyStatus, string> = {
+  OPEN: 'bg-status-critical-bg text-status-critical',
+  ACKNOWLEDGED: 'bg-status-alert-bg text-status-alert',
+  RESOLVED: 'bg-status-ok-bg text-status-ok',
+}
+
+export const EVENT_LABEL: Record<EventType, string> = {
+  SCHEDULED_OUTAGE: 'Parada programada',
+  OPERATIONAL_CHANGE: 'Cambio operativo',
+  DATA_QUALITY: 'Calidad de datos',
+  UNKNOWN: 'Desconocido',
+}
+
+export const EVENT_BADGE: Record<EventType, string> = {
+  SCHEDULED_OUTAGE: 'bg-type-explainable-bg text-type-explainable',
+  OPERATIONAL_CHANGE: 'bg-type-explainable-bg text-type-explainable',
+  DATA_QUALITY: 'bg-type-data-quality-bg text-type-data-quality',
+  UNKNOWN: 'bg-type-false-positive-bg text-type-false-positive',
+}
+
+const EVENT_TEXT: Record<string, string> = {
+  'New production line activated': 'Nueva línea de producción activada.',
+  'Scheduled maintenance outage for 12 hours': 'Parada de mantenimiento programada de 12 horas.',
+  'No operational event reported': 'No se reportó ningún evento operativo.',
+  'Intermittent readings and abnormal electrical jumps':
+    'Lecturas intermitentes y saltos eléctricos anormales.',
+}
+
+/** Event descriptions come from the data in English; the known ones are shown in Spanish. */
+export const eventText = (description: string) => EVENT_TEXT[description] ?? description

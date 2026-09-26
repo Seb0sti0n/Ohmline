@@ -61,6 +61,7 @@ func buildPrompt(r engine.AnomalyResult) (system, user string, allowed *numberSe
 	// The score breakdowns explain how the engine ranked things; the model does not need them, and
 	// on a free tier every token counts (requests per minute are limited by tokens).
 	in.Evidence.PriorityBreakdown, in.Evidence.ConfidenceBreakdown = nil, nil
+	in.Evidence.PriorityWeights, in.Evidence.ConfidenceWeights = nil, nil
 	b, err := json.Marshal(in)
 	if err != nil {
 		return "", "", nil, err

@@ -22,7 +22,61 @@ export interface Anomaly {
   window_start: string | null
   window_end: string | null
   explanation_source: 'LLM' | 'TEMPLATE'
-  evidence?: Record<string, unknown>
+  evidence?: Evidence
+}
+
+export interface Change {
+  variable: 'consumption_kwh' | 'current_a' | 'power_factor' | 'voltage_v' | 'voltage_std'
+  baseline: number
+  observed: number
+  delta: number
+  delta_pct: number
+  significant: boolean
+  direction: 'up' | 'down' | 'stable'
+}
+
+export interface EventMatch {
+  type: EventType
+  timestamp: string
+  description: string
+  compatible: boolean
+  quality: number
+  reason: string
+}
+
+export type EventType = 'SCHEDULED_OUTAGE' | 'OPERATIONAL_CHANGE' | 'DATA_QUALITY' | 'UNKNOWN'
+
+export interface QualityInfo {
+  total_flags: number
+  by_kind: Record<string, number>
+  recurrent: boolean
+  first_flag: string
+  last_flag: string
+  max_flags_in_24h: number
+  flagged_hours: number
+  window_hours: number
+}
+
+/** What backs an anomaly's conclusion (see engine.Evidence). */
+export interface Evidence {
+  kind: 'consumption_shift' | 'data_quality'
+  window: { start: string; end: string; hours: number; ongoing: boolean }
+  metrics: {
+    baseline_daily_kwh: number
+    last_day_kwh: number
+    last_day_variation_pct: number
+    window_variation_pct: number
+    extra_kwh: number
+    median_abs_z: number
+  }
+  changed_variables: Change[]
+  events: EventMatch[]
+  rules_fired: string[]
+  quality?: QualityInfo
+  priority_breakdown: Record<string, number>
+  confidence_breakdown: Record<string, number>
+  priority_weights: Record<string, number>
+  confidence_weights: Record<string, number>
 }
 
 export interface MeterSummary {
@@ -34,6 +88,7 @@ export interface MeterSummary {
   baseline_kwh: number
   variation_pct: number
   daily_kwh: number[]
+  daily_from: string
   anomaly: Anomaly | null
 }
 
@@ -99,4 +154,31 @@ export interface MeterQuery {
   search?: string
   sort?: MeterSort
   order?: SortOrder
+}
+
+/** One point of a meter series with the expected values for the same hour (or day). */
+export interface ReadingPoint {
+  timestamp: string
+  consumption_kwh: number
+  voltage_v: number
+  current_a: number
+  power_factor: number
+  baseline_kwh: number
+  band_low_kwh: number
+  band_high_kwh: number
+  baseline_voltage_v: number
+  baseline_current_a: number
+  baseline_power_factor: number
+}
+
+export interface MeterEvent {
+  timestamp: string
+  type: EventType
+  description: string
+}
+
+export interface AnomalyQuery {
+  type?: AnomalyType
+  severity?: Severity
+  status?: AnomalyStatus
 }

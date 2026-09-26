@@ -19,8 +19,9 @@ type meterSummary struct {
 	ConsumptionKWh float64     `json:"consumption_kwh"` // last 24 h
 	BaselineKWh    float64     `json:"baseline_kwh"`    // expected daily consumption
 	VariationPct   float64     `json:"variation_pct"`
-	DailyKWh       []float64   `json:"daily_kwh"` // consumption per UTC day, for the sparkline
-	Anomaly        *db.Anomaly `json:"anomaly"`   // from the latest completed analysis, or null
+	DailyKWh       []float64   `json:"daily_kwh"`  // consumption per UTC day, for the sparkline
+	DailyFrom      string      `json:"daily_from"` // YYYY-MM-DD of the first daily value
+	Anomaly        *db.Anomaly `json:"anomaly"`    // from the latest completed analysis, or null
 }
 
 func r1(v float64) float64 { return math.Round(v*10) / 10 }
@@ -46,6 +47,7 @@ func summarizeMeter(m db.Meter, rs []engine.Reading, cfg config.Engine, a *db.An
 	}
 	s.ConsumptionKWh, s.BaselineKWh, s.VariationPct = r1(s.ConsumptionKWh), r1(s.BaselineKWh), r1(s.VariationPct)
 	s.DailyKWh = dailyTotals(rs)
+	s.DailyFrom = rs[0].Timestamp.Format("2006-01-02")
 	return s
 }
 

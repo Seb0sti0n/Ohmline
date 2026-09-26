@@ -15,6 +15,26 @@ const (
 	falsePosLimit = 19.0   // FALSE_POSITIVE is always forced below 20
 )
 
+// priorityWeights and confidenceWeights are also published in the evidence, so the UI can show each
+// component of a score against its maximum without duplicating these numbers.
+var (
+	priorityWeights = map[string]float64{
+		"magnitude": wMagnitude, "persistence": wPersistence, "electrical": wElectrical,
+		"unexplained": wUnexplained, "extra_energy": wExtraKWh,
+	}
+	confidenceWeights = map[string]float64{
+		"base": 0.40, "signal_strength": 0.25, "independent_signals": 0.20, "explanation_clarity": 0.10,
+	}
+)
+
+func copyWeights(m map[string]float64) map[string]float64 {
+	out := make(map[string]float64, len(m))
+	for k, v := range m {
+		out[k] = v
+	}
+	return out
+}
+
 type scoreInput struct {
 	Type        AnomalyType
 	Magnitude   float64 // |variation %| for consumption shifts, flagged-hours fraction*100 for data quality
@@ -66,10 +86,10 @@ type confidenceInput struct {
 // event match. It is capped at 0.99: the engine never claims certainty.
 func confidence(in confidenceInput) (float64, map[string]float64) {
 	parts := map[string]float64{
-		"base":                0.40,
-		"signal_strength":     0.25 * clamp01(in.Strength),
-		"independent_signals": 0.20 * clamp01(float64(in.Signals)/4),
-		"explanation_clarity": 0.10 * clamp01(in.Clarity),
+		"base":                confidenceWeights["base"],
+		"signal_strength":     confidenceWeights["signal_strength"] * clamp01(in.Strength),
+		"independent_signals": confidenceWeights["independent_signals"] * clamp01(float64(in.Signals)/4),
+		"explanation_clarity": confidenceWeights["explanation_clarity"] * clamp01(in.Clarity),
 	}
 	total := 0.0
 	for k, v := range parts {

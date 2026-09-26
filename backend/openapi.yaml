@@ -231,6 +231,7 @@ components:
         consumption_kwh: { type: number, description: Last 24 hours }
         baseline_kwh: { type: number, description: Expected daily consumption }
         variation_pct: { type: number }
+        daily_from: { type: string, example: "2026-09-01", description: Date of the first daily value }
         daily_kwh: { type: array, items: { type: number }, description: Consumption per UTC day (14 values), for the sparkline }
         anomaly: { allOf: [{ $ref: "#/components/schemas/Anomaly" }], nullable: true }
 
@@ -273,7 +274,7 @@ components:
         explanation_source: { type: string, enum: [LLM, TEMPLATE], description: Who wrote reason, explanation and recommended_action }
         evidence:
           type: object
-          description: Window, metrics vs baseline, changed variables, related events, rules fired, priority and confidence breakdowns, and quality flags for DATA_QUALITY.
+          description: Window, metrics vs baseline, changed variables, related events, rules fired, priority and confidence breakdowns (with the maximum weight of each component), and quality flags for DATA_QUALITY.
 
     AnalysisRun:
       type: object

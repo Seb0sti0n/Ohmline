@@ -55,7 +55,16 @@ Screens so far: login (demo credentials prefilled), the dashboard (analysis card
 strip, daily consumption chart with baseline, "Qué atender primero", meter status tiles) and the meters table
 (status filters with counters, `meter_id` search, sort by consumption / variation / status, 14-day sparklines).
 Filters, search and sorting are sent to the API (`GET /meters?status=&search=&sort=&order=`); the counters come from
-an unfiltered request. Meter detail, anomalies and investigation are placeholders until the next phase.
+an unfiltered request.
+
+The rest of the flow: **meter detail** (`/meters/:id`: the AI verdict, KPIs, hourly consumption against the baseline
+band with the anomalous window shaded, voltage / current / power factor and the meter's events), the **anomalies**
+table (`/anomalies`: priority bar, type, severity, confidence, reason and an action button named after the type) and
+the **investigation** (`/anomalies/:id`): what the AI found, daily comparison against the baseline, the variables that
+changed (or the failed quality checks for a data-quality anomaly), classification with a breakdown of *why* that
+confidence, the recommended action with *Marcar en investigación* / *Resolver* / *Reabrir* (a `PATCH` on the anomaly),
+the related events and the evidence rules that fired. The confidence breakdown is drawn from the weights the engine
+publishes in `evidence`, so the UI does not repeat the engine's numbers.
 
 How it behaves: **Run AI Analysis** starts the run and polls it every 500 ms; the stepper follows the real stage of
 the run, and reloading the page mid-run resumes following it. An expired or invalid token (401) clears the session and
@@ -130,4 +139,4 @@ Meter status is derived from the latest analysis: `REAL_ANOMALY` → CRITICAL, `
 
 ## Status
 
-Phases 1 (scaffolding), 2 (data), 3 (analysis engine), 4 (API), 5 (LLM layer) and 6 (frontend base) done. Next: meter detail, anomalies and investigation screens.
+Phases 1 to 7 done (the full demo flow works). Next: polish and the final walkthrough of the demo script.

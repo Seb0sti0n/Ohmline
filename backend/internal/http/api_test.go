@@ -171,6 +171,7 @@ type meterRow struct {
 	Name         string    `json:"name"`
 	Location     string    `json:"location"`
 	DailyKWh     []float64 `json:"daily_kwh"`
+	DailyFrom    string    `json:"daily_from"`
 }
 
 func meterIDs(ms []meterRow) []string {
@@ -261,6 +262,9 @@ func TestBeforeAnyAnalysis(t *testing.T) {
 	}
 	if m := byID["M-101"]; m.Name != "Compresores A" || m.Location != "Planta Norte" {
 		t.Errorf("M-101 name/location = %q / %q", m.Name, m.Location)
+	}
+	if got := byID["M-101"].DailyFrom; got != "2026-09-01" {
+		t.Errorf("daily_from = %q, want 2026-09-01", got)
 	}
 	for _, m := range ms {
 		if len(m.DailyKWh) != 14 {

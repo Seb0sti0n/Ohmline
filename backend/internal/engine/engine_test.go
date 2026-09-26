@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"math"
+	"strings"
 	"testing"
 
 	"github.com/Seb0sti0n/astrophage/backend/internal/config"
@@ -167,4 +169,51 @@ func ids(rs []AnomalyResult) []string {
 		out = append(out, r.MeterID)
 	}
 	return out
+}
+
+// The evidence publishes each score component's maximum, so the UI can draw breakdowns as fractions.
+func TestBreakdownsComeWithTheirWeights(t *testing.T) {
+	for meter, r := range runReal(t, nil) {
+		e := r.Evidence
+		if len(e.ConfidenceWeights) == 0 || len(e.PriorityWeights) == 0 {
+			t.Fatalf("%s: weights missing from the evidence", meter)
+		}
+		for name, weights := range map[string]struct{ parts, max map[string]float64 }{
+			"confidence": {e.ConfidenceBreakdown, e.ConfidenceWeights},
+			"priority":   {e.PriorityBreakdown, e.PriorityWeights},
+		} {
+			for k, v := range weights.parts {
+				if k == "capped_false_positive" {
+					continue
+				}
+				max, ok := weights.max[k]
+				if !ok {
+					t.Errorf("%s %s: component %q has no weight", meter, name, k)
+				} else if v < 0 || v > max+0.001 {
+					t.Errorf("%s %s: %q = %v is outside 0..%v", meter, name, k, v, max)
+				}
+			}
+		}
+		// The confidence is exactly the sum of its parts, capped.
+		sum := 0.0
+		for _, v := range e.ConfidenceBreakdown {
+			sum += v
+		}
+		if want := math.Min(sum, 0.99); math.Abs(r.Confidence-round(want, 2)) > 0.011 {
+			t.Errorf("%s: confidence %v does not match its breakdown (%v)", meter, r.Confidence, sum)
+		}
+	}
+}
+
+// The evidence is shown to operators as is: it must not leak internal identifiers.
+func TestEvidenceTextsAreForOperators(t *testing.T) {
+	for meter, r := range runReal(t, nil) {
+		for _, rule := range r.Evidence.RulesFired {
+			for _, raw := range []string{"OPERATIONAL_CHANGE", "SCHEDULED_OUTAGE", "DATA_QUALITY", "UNKNOWN", "flags"} {
+				if strings.Contains(rule, raw) {
+					t.Errorf("%s: rule %q contains %q", meter, rule, raw)
+				}
+			}
+		}
+	}
 }
