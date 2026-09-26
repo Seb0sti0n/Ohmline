@@ -1,4 +1,4 @@
-import type { AnalysisRun, AnomalyType, DashboardSummary } from '@/types/api'
+import type { AnalysisRun, AnomalyType } from '@/types/api'
 import { formatInt, formatLocalTime, formatSeconds, plural } from './format'
 
 export const STEP_NAMES = [
@@ -94,5 +94,3 @@ export function resultText(run: AnalysisRun | null): string | null {
   if (s.high_priority === 0) return `${found}, ninguna requiere atención prioritaria`
   return `${found}, ${s.high_priority} ${s.high_priority === 1 ? 'requiere' : 'requieren'} atención prioritaria`
 }
-
-export type { DashboardSummary }

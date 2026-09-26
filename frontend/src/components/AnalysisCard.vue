@@ -25,7 +25,7 @@ const result = computed(() => resultText(props.run))
     </div>
 
     <ol class="m-0 grid list-none grid-cols-7 p-0">
-      <li v-for="(step, i) in steps" :key="step.label" class="flex flex-col gap-2">
+      <li v-for="(step, i) in steps" :key="step.label" class="flex min-w-0 flex-col gap-2 pr-2">
         <div class="flex items-center">
           <span
             class="flex size-[30px] shrink-0 items-center justify-center rounded-full text-[13px] font-bold"

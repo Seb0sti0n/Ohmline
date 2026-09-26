@@ -1,77 +1,75 @@
 # Astrophage
 
-AI energy management MVP: turns hourly readings from 12 electric meters into operational decisions
-(data → analysis → anomaly → explanation → prioritization → action).
+AI energy management MVP. It turns the hourly readings of 12 electric meters (14 days) into operational decisions:
+**data → analysis → anomaly → explanation → prioritization → action**. An operator can see in a minute which meter to
+check first and *why* the AI reached that conclusion.
 
-The original brief is in [docs/new_project.pdf](docs/new_project.pdf);
-the UI design system and mockups are in [design/](design/).
+The UI is in Spanish and branded **Ohmline** (from the approved design). Code, comments and docs are in English.
+The original brief is in [docs/new_project.pdf](docs/new_project.pdf); the design system and mockups are in [design/](design/).
 
-## Stack
+## Quick start
 
-- **Backend:** Go, chi, pgx, PostgreSQL
-- **Frontend:** Vue 3, Vite, TypeScript, Pinia, Vue Router, Tailwind (theme generated from `design/tokens.json`), ECharts
-- **LLM (optional):** any OpenAI-compatible API (Groq by default); deterministic templates as fallback
-
-## Layout
-
-```
-backend/    Go API (cmd/api, internal/...)
-frontend/   Vue app
-data/       readings.csv, events.csv
-design/     design system and mockups
-docs/       original brief
-```
-
-## Run locally
-
-Requirements: Go 1.24+ (the toolchain downloads the exact version in `go.mod` automatically), Node 20+, a local PostgreSQL.
+Requirements: Go 1.24+ (the toolchain fetches the exact version in `go.mod`), Node 20+, and a local PostgreSQL
+(the defaults assume user `postgres` / password `postgres` on `localhost:5432`).
 
 ```bash
-cp .env.example .env     # adjust DATABASE_URL if your Postgres credentials differ
+cp .env.example .env     # optional: add LLM_API_KEY, or change DATABASE_URL
 make db                  # creates the `astrophage` database
-make seed                # applies migrations, loads data/*.csv and the demo user
-make api                 # http://localhost:8080/api/health
-make web                 # http://localhost:5173
+make seed                # migrations + 12 meters, 4.032 readings, 4 events + the demo user
+make api                 # terminal 1: http://localhost:8080  (health: /api/health)
+make web                 # terminal 2: http://localhost:5173
 ```
 
-### Data and demo user
+Open http://localhost:5173. The login comes prefilled: `demo@energy.io` / `demo123`.
+`make seed` can be run again at any time: it wipes and reloads everything, which resets the demo to "no analysis yet".
+`make test` runs every test (see [Tests](#tests)).
 
-`make seed` is idempotent (it truncates and reloads). It validates the CSVs (duplicates, gaps in the hourly grid,
-negative or empty values) and prints any issues; the current dataset has none. Result: 12 meters, 4.032 readings,
-4 events, with the demo names and locations of the design (e.g. M-109 "Tablero principal B", Planta Sur). Demo login: `demo@energy.io` / `demo123`. The seed does not run the analysis.
+Without `LLM_API_KEY` the app works fully and writes the explanations from deterministic templates. With a key
+(Groq by default, see [LLM explanations](#llm-explanations)) the AI writes them from the evidence.
 
-Migrations live in `backend/migrations` (embedded in the binary and applied by the seed command).
+## Demo script (5–10 min)
 
-If `design/tokens.json` changes, regenerate the Tailwind theme with `cd frontend && npm run tokens`.
+1. **Login → dashboard.** No analysis yet: KPIs show "—", the priority list invites you to run it, meters read "Sin evaluar".
+2. **Run AI Analysis.** The stepper walks the 7 stages (Lecturas → Baseline → Detección → Correlación → Eventos →
+   Explicación → Recomendación) and ends with *"4 anomalías detectadas, 2 requieren atención prioritaria"*.
+3. **Medidores**, sort by *Variación*: **M-109** is on top (+110,7%).
+4. **M-109 detail.** Consumption doubles on 12 Sep at 14:00, far outside the baseline band; the power factor falls; no event.
+5. **Investigation.** The explanation with concrete numbers, the variables that changed, why the confidence is 0,94,
+   the recommended action ("Investigar medidor e instalación") and the evidence. Mark it *en investigación* or resolve it.
+6. **Contrast.** M-112 (stable consumption, erratic electrical readings → validate the meter), M-104 (explained by the
+   new production line), M-106 (12 h drop explained by a scheduled outage → do not escalate).
+7. **Close.** Why the AI concluded each case, and what the operator should do first.
 
-## Frontend
+## Architecture
 
-Vue 3 + Vite + TypeScript, Pinia, Vue Router, Tailwind v4 and ECharts. The UI follows the approved mockups in
-`design/` (the product is branded **Ohmline** there). `npm run tokens` regenerates `src/assets/theme.css` from
-`design/tokens.json` (color aliases such as `{ink-muted}` are resolved), so classes like `bg-surface`,
-`text-ink-muted` or `rounded-lg` come straight from the design tokens.
+```mermaid
+flowchart LR
+  CSV[("data/*.csv")] -- make seed --> DB[("PostgreSQL")]
+  UI["Vue app<br/>Pinia + ECharts"] -- "REST /api (JWT)" --> HTTP
+  subgraph Go API
+    HTTP["chi handlers"] --> Runner["analysis runner<br/>(goroutine)"]
+    Runner --> Engine["engine<br/>pure functions"]
+    Runner --> LLM["llm client<br/>(optional)"]
+  end
+  HTTP --> DB
+  Runner --> DB
+  LLM -. "OpenAI-compatible API" .-> Provider[("Groq or any provider")]
+```
 
-Screens so far: login (demo credentials prefilled), the dashboard (analysis card with the 7-stage stepper, KPI
-strip, daily consumption chart with baseline, "Qué atender primero", meter status tiles) and the meters table
-(status filters with counters, `meter_id` search, sort by consumption / variation / status, 14-day sparklines).
-Filters, search and sorting are sent to the API (`GET /meters?status=&search=&sort=&order=`); the counters come from
-an unfiltered request.
+```
+backend/    Go API: cmd/api, cmd/seed, internal/{config,db,http,analysis,engine,llm,seed}, migrations, openapi.yaml
+frontend/   Vue 3 app (views, components, stores, utils, services)
+data/       readings.csv, events.csv
+design/     design system (tokens.json, DESIGN.md) and mockups
+docs/       the original brief
+```
 
-The rest of the flow: **meter detail** (`/meters/:id`: the AI verdict, KPIs, hourly consumption against the baseline
-band with the anomalous window shaded, voltage / current / power factor and the meter's events), the **anomalies**
-table (`/anomalies`: priority bar, type, severity, confidence, reason and an action button named after the type) and
-the **investigation** (`/anomalies/:id`): what the AI found, daily comparison against the baseline, the variables that
-changed (or the failed quality checks for a data-quality anomaly), classification with a breakdown of *why* that
-confidence, the recommended action with *Marcar en investigación* / *Resolver* / *Reabrir* (a `PATCH` on the anomaly),
-the related events and the evidence rules that fired. The confidence breakdown is drawn from the weights the engine
-publishes in `evidence`, so the UI does not repeat the engine's numbers.
+The core idea: the **engine is a package of pure functions** (`Run(readings, events, cfg) → []AnomalyResult`). It decides
+type, severity, priority and confidence and gathers the evidence. Everything else only orchestrates, stores and shows it.
+The LLM never decides anything: it rewrites the text from the evidence, and its output is validated.
 
-How it behaves: **Run AI Analysis** starts the run and polls it every 500 ms; the stepper follows the real stage of
-the run, and reloading the page mid-run resumes following it. An expired or invalid token (401) clears the session and
-returns to the login. Logic that can go wrong silently (formatting, stepper and KPI builders, polling and
-cancellation, stale responses, route guard, login errors) is covered by Vitest (`cd frontend && npm test`).
-
-Not included: ESLint (the strict `vue-tsc` type-check and Prettier are used instead).
+Stack: Go, chi, pgx (hand-written SQL, no ORM), golang-migrate, PostgreSQL · Vue 3, Vite, TypeScript, Pinia, Vue Router,
+Tailwind v4 (theme generated from the design tokens), ECharts · Vitest and `go test`.
 
 ## Analysis engine
 
@@ -132,11 +130,71 @@ by a previous process are marked `FAILED` on startup.
 Meter status is derived from the latest analysis: `REAL_ANOMALY` → CRITICAL, `DATA_QUALITY` and
 `EXPLAINABLE_ANOMALY` → ALERT, `FALSE_POSITIVE` and no anomaly → OK.
 
+## Frontend
+
+Vue 3 + Vite + TypeScript, Pinia, Vue Router, Tailwind v4 and ECharts. The UI follows the approved mockups in
+`design/` (the product is branded **Ohmline** there). `npm run tokens` regenerates `src/assets/theme.css` from
+`design/tokens.json` (color aliases such as `{ink-muted}` are resolved), so classes like `bg-surface`,
+`text-ink-muted` or `rounded-lg` come straight from the design tokens.
+
+Screens: login (demo credentials prefilled), the dashboard (analysis card with the 7-stage stepper, KPI
+strip, daily consumption chart with baseline, "Qué atender primero", meter status tiles) and the meters table
+(status filters with counters, `meter_id` search, sort by consumption / variation / status, 14-day sparklines).
+Filters, search and sorting are sent to the API (`GET /meters?status=&search=&sort=&order=`); the counters come from
+an unfiltered request.
+
+The rest of the flow: **meter detail** (`/meters/:id`: the AI verdict, KPIs, hourly consumption against the baseline
+band with the anomalous window shaded, voltage / current / power factor and the meter's events), the **anomalies**
+table (`/anomalies`: priority bar, type, severity, confidence, reason and an action button named after the type) and
+the **investigation** (`/anomalies/:id`): what the AI found, daily comparison against the baseline, the variables that
+changed (or the failed quality checks for a data-quality anomaly), classification with a breakdown of *why* that
+confidence, the recommended action with *Marcar en investigación* / *Resolver* / *Reabrir* (a `PATCH` on the anomaly),
+the related events and the evidence rules that fired. The confidence breakdown is drawn from the weights the engine
+publishes in `evidence`, so the UI does not repeat the engine's numbers.
+
+How it behaves: **Run AI Analysis** starts the run and polls it every 500 ms; the stepper follows the real stage of
+the run, and reloading the page mid-run resumes following it. An expired or invalid token (401) clears the session and
+returns to the login. Logic that can go wrong silently (formatting, stepper and KPI builders, polling and
+cancellation, stale responses, route guard, login errors) is covered by Vitest (`cd frontend && npm test`).
+
+
+### Data and demo user
+
+The seed validates the CSVs (duplicates, gaps in the hourly grid, negative or empty values) and prints any issues; this
+dataset has none. It also assigns the demo names and locations of the design (for example M-109 "Tablero principal B",
+Planta Sur). Migrations live in `backend/migrations` (embedded in the binary and applied by the seed command). If
+`design/tokens.json` changes, regenerate the Tailwind theme with `cd frontend && npm run tokens`.
+
+## Design decisions and limitations
+
+Decisions
+
+- **Simple on purpose.** No ORM, no repository/service layers, no message queue: handlers call `db` and `analysis`
+  directly. The analysis runs in a goroutine, one at a time (a second request gets `409` with the running id).
+- **Explainable by construction.** Every anomaly stores its evidence, the rules that fired and the breakdown of its
+  priority and confidence. The UI draws those breakdowns from weights published by the engine, so numbers are not duplicated.
+- **No label leakage.** The event type is never used to classify: M-112 is found as a data-quality problem from its
+  readings, and stays one even if its event is relabeled or removed (there is a test for it). An event only *explains* a
+  change if it is compatible with it, not just close in time.
+- **The LLM can fail without consequences.** If it is missing, slow, rate limited or wrong, the template text is used.
+- **`expected_results.csv` is not part of this repo and is never used.** The expected cases come from the brief.
+
+Limitations (this is an MVP, not production)
+
+- Thresholds are tuned to this dataset and live in `backend/internal/config/engine.go`. The 7-day baseline is short and
+  assumes it contains no anomalies (true here); a real system would use more history and weekly seasonality.
+- One anomaly per meter (its highest-priority window). Hours are UTC. Data is loaded by the seed: no live ingestion,
+  no meter CRUD, one demo user, no roles, no rate limiting on login. Change `JWT_SECRET` before showing this to anyone.
+- Running a new analysis replaces the visible anomalies with the new run's (their ids change, acknowledged/resolved states reset).
+- The stepper shows the real stage of the run, but the engine itself is a single fast computation; each stage pauses
+  `ANALYSIS_STEP_DELAY_MS` (default 600) so progress is visible.
+- Free LLM tiers limit tokens per minute: one analysis per minute fits comfortably; more may fall back to templates.
+- No Docker Compose: the app uses your local PostgreSQL. The UI targets desktop: no horizontal overflow down to about 1024 px, and the meters table scrolls inside its card below that.
+  No ESLint: the strict `vue-tsc` type-check and Prettier are used.
+
 ## Tests
 
-`make test` runs the backend and frontend tests. The API tests need PostgreSQL: they create and use their own
-`astrophage_test` database (override with `TEST_DATABASE_URL`) and skip themselves if Postgres is not reachable.
-
-## Status
-
-Phases 1 to 7 done (the full demo flow works). Next: polish and the final walkthrough of the demo script.
+`make test` runs both suites: `go test ./...` (engine on the real dataset, API cycle, LLM client against a fake server,
+config, seed) and `npm test` (Vitest: formatting, stepper and KPI builders, polling and cancellation, stale responses,
+route guard, login, the tables and the action buttons). The API tests need PostgreSQL: they create and use their own
+`astrophage_test` database (override with `TEST_DATABASE_URL`) and skip themselves if it is not reachable.

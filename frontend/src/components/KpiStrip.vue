@@ -16,7 +16,7 @@ defineProps<{ kpis: Kpi[] }>()
     >
       <span class="text-label font-normal text-ink-muted">{{ kpi.label }}</span>
       <span
-        class="font-bold tabular-nums"
+        class="flex flex-wrap items-baseline font-bold tabular-nums"
         :class="[
           kpi.compact ? 'text-[20px] leading-9 font-[650]' : 'text-kpi',
           kpi.tone === 'critical' ? 'text-status-critical' : '',

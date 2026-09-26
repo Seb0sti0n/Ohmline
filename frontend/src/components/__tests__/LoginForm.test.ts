@@ -56,7 +56,9 @@ describe('LoginForm', () => {
     const w = mount(LoginForm)
     await w.find('form').trigger('submit')
     await flushPromises()
-    expect(w.find('[role=alert]').text()).toBe('No se pudo conectar con el servidor')
+    expect(w.find('[role=alert]').text()).toBe(
+      'No se pudo iniciar sesión. El servidor no responde.',
+    )
   })
 
   it('disables the button while signing in, so it cannot be submitted twice', async () => {

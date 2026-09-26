@@ -1,4 +1,4 @@
-import type { Anomaly, AnomalyType, Evidence, MeterSummary, ReadingPoint } from '@/types/api'
+import type { Anomaly, AnomalyType, Evidence, ReadingPoint } from '@/types/api'
 import { formatDataTime, formatDecimal, formatInt, formatPct } from './format'
 
 /** Alta / Media / Baja, from a 0-1 confidence. */
@@ -258,5 +258,3 @@ export function verdict(
     rest: a.reason,
   }
 }
-
-export type { MeterSummary }

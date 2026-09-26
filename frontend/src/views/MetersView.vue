@@ -35,7 +35,7 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
     </p>
   </header>
 
-  <div class="flex items-center justify-between gap-4">
+  <div class="flex flex-wrap items-center justify-between gap-4">
     <div role="group" aria-label="Filtrar por estado" class="flex gap-2">
       <button
         v-for="f in filters"
@@ -50,7 +50,10 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
         "
         @click="meters.setFilter(f.key)"
       >
-        {{ f.label }}<span class="font-medium opacity-80">{{ meters.counts[f.key] }}</span>
+        {{ f.label
+        }}<span v-if="meters.all.length" class="font-medium opacity-80">{{
+          meters.counts[f.key]
+        }}</span>
       </button>
     </div>
 
@@ -91,7 +94,7 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
     Cargando medidores…
   </p>
 
-  <section v-else class="overflow-hidden rounded-lg border border-line bg-surface">
+  <section v-else class="overflow-x-auto rounded-lg border border-line bg-surface">
     <MetersTable
       :rows="meters.rows"
       :sort="meters.sort"

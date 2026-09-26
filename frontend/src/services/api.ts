@@ -36,15 +36,17 @@ api.interceptors.response.use(
   },
 )
 
-/** A readable message for any failed request. */
+/**
+ * A readable Spanish message for any failed request. The server's own error strings are in English
+ * and meant for developers, so they are never shown: a missing or 5xx answer means the server is
+ * not responding, anything else gets the caller's message.
+ */
 export function errorMessage(
   error: unknown,
   fallback = 'No se pudo completar la solicitud',
 ): string {
-  if (axios.isAxiosError(error)) {
-    if (!error.response) return 'No se pudo conectar con el servidor'
-    const msg = (error.response.data as { error?: string } | undefined)?.error
-    if (msg) return msg
+  if (axios.isAxiosError(error) && (!error.response || error.response.status >= 500)) {
+    return `${fallback}. El servidor no responde.`
   }
   return fallback
 }
