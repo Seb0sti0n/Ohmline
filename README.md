@@ -9,18 +9,18 @@ The original brief is in [docs/new_project.pdf](docs/new_project.pdf); the desig
 
 ## Quick start
 
-Requirements: Go 1.24+, Node 20+, and a local PostgreSQL
-(the defaults assume user `postgres` / password `postgres` on `localhost:5432`).
+Requirements: Go 1.24+, Node 20+ and a PostgreSQL server you can connect to. The connection settings live in `.env`
+(copy `.env.example` and adjust them to your setup).
 
 ```bash
-cp .env.example .env     # optional: add LLM_API_KEY, or change DATABASE_URL
-make db                  # creates the `astrophage` database
-make seed                # migrations + 12 meters, 4.032 readings, 4 events + the demo user
-make api                 # terminal 1: http://localhost:8080  (health: /api/health)
-make web                 # terminal 2: http://localhost:5173
+cp .env.example .env     # then set the database connection; optionally add an LLM API key
+make db                  # creates the project database (skip it if you create it yourself)
+make seed                # migrations + 12 meters, 4.032 readings, 4 events + a demo user
+make api                 # terminal 1: starts the backend API
+make web                 # terminal 2: starts the frontend (it prints the URL to open)
 ```
 
-Open http://localhost:5173. The login comes prefilled: `demo@energy.io` / `demo123`.
+Open the URL printed by `make web`. The login form comes prefilled with the demo account.
 `make seed` can be run again at any time: it wipes and reloads everything, which resets the demo to "no analysis yet".
 `make test` runs every test (see [Tests](#tests)).
 
@@ -205,4 +205,4 @@ Limitations (this is an MVP, not production)
 `make test` runs both suites: `go test ./...` (engine on the real dataset, API cycle, LLM client against a fake server,
 config, seed) and `npm test` (Vitest: formatting, stepper and KPI builders, polling and cancellation, stale responses,
 route guard, login, the tables and the action buttons). The API tests need PostgreSQL: they create and use their own
-`astrophage_test` database (override with `TEST_DATABASE_URL`) and skip themselves if it is not reachable.
+test database (its connection can be set with `TEST_DATABASE_URL`) and skip themselves if PostgreSQL is not reachable.

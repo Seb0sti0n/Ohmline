@@ -7,7 +7,7 @@ info:
     `Authorization: Bearer <token>`. JSON is snake_case, timestamps are RFC3339 in UTC.
     Errors are `{"error": "message"}`.
 servers:
-  - url: http://localhost:8080/api
+  - url: /api
 security:
   - bearer: []
 
@@ -22,7 +22,7 @@ paths:
 
   /auth/login:
     post:
-      summary: Log in with the demo user (demo@energy.io / demo123)
+      summary: Log in with the demo user
       security: []
       requestBody:
         required: true
