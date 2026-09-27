@@ -155,6 +155,20 @@ export interface MeterQuery {
   search?: string
   sort?: MeterSort
   order?: SortOrder
+  page?: number
+  page_size?: number
+}
+
+/** Number of meters per status over all meters (ignoring filters), for the filter chips. */
+export type MeterCounts = Record<'ALL' | MeterStatus, number>
+
+/** One page of the meters table. `total` is what matches the filters, `counts` covers every meter. */
+export interface MeterPage {
+  items: MeterSummary[]
+  total: number
+  page: number
+  page_size: number
+  counts: MeterCounts
 }
 
 /** One point of a meter series with the expected values for the same hour (or day). */

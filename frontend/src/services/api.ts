@@ -7,6 +7,7 @@ import type {
   AnomalyStatus,
   DashboardSummary,
   MeterEvent,
+  MeterPage,
   MeterQuery,
   MeterSummary,
   ReadingPoint,
@@ -60,7 +61,7 @@ export const getDashboard = () =>
   api.get<DashboardSummary>('/dashboard/summary').then((r) => r.data)
 
 export const getMeters = (params: MeterQuery = {}) =>
-  api.get<MeterSummary[]>('/meters', { params }).then((r) => r.data)
+  api.get<MeterPage>('/meters', { params }).then((r) => r.data)
 
 /** Starts an analysis. If one is already running the API answers 409 with its id, which we follow. */
 export async function startAnalysis(): Promise<number> {

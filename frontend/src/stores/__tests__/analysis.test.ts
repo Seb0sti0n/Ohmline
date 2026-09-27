@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import type { AnalysisRun } from '@/types/api'
-import { run, steps } from '@/utils/__tests__/fixtures'
+import { meterPage, run, steps } from '@/utils/__tests__/fixtures'
 
 const api = {
   startAnalysis: vi.fn<() => Promise<number>>(),
@@ -35,7 +35,7 @@ beforeEach(() => {
   setActivePinia(createPinia())
   Object.values(api).forEach((f) => f.mockReset())
   api.getDashboard.mockResolvedValue({ meters: [] })
-  api.getMeters.mockResolvedValue([])
+  api.getMeters.mockResolvedValue(meterPage([]))
 })
 afterEach(() => vi.useRealTimers())
 

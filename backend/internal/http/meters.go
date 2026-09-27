@@ -3,7 +3,9 @@ package http
 import (
 	"math"
 	"net/http"
+	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -111,6 +113,32 @@ func (s *Server) allSummaries(r *http.Request) ([]meterSummary, error) {
 	return out, nil
 }
 
+const (
+	defaultPageSize = 10
+	maxPageSize     = 100
+)
+
+// meterPage is one page of the meters table. Total is the number of meters that match the filters
+// (for the pager); Counts is the number of meters per status over *all* meters, ignoring filters
+// and search (for the filter chips), so the UI never needs the full list.
+type meterPage struct {
+	Items    []meterSummary `json:"items"`
+	Total    int            `json:"total"`
+	Page     int            `json:"page"`
+	PageSize int            `json:"page_size"`
+	Counts   map[string]int `json:"counts"`
+}
+
+// intParam reads an optional integer query parameter within [min, max].
+func intParam(q url.Values, name string, fallback, min, max int) (int, bool) {
+	v := q.Get(name)
+	if v == "" {
+		return fallback, true
+	}
+	n, err := strconv.Atoi(v)
+	return n, err == nil && n >= min && n <= max
+}
+
 func (s *Server) listMeters(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	status := strings.ToUpper(q.Get("status"))
@@ -127,11 +155,25 @@ func (s *Server) listMeters(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "order must be asc or desc")
 		return
 	}
+	page, ok := intParam(q, "page", 1, 1, math.MaxInt32)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "page must be a positive integer")
+		return
+	}
+	pageSize, ok := intParam(q, "page_size", defaultPageSize, 1, maxPageSize)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "page_size must be between 1 and 100")
+		return
+	}
 
 	all, err := s.allSummaries(r)
 	if err != nil {
 		serverError(w, r, err)
 		return
+	}
+	counts := map[string]int{"ALL": len(all), "OK": 0, "ALERT": 0, "CRITICAL": 0, statusUnevaluated: 0}
+	for _, m := range all {
+		counts[m.Status]++
 	}
 	search := strings.ToLower(strings.TrimSpace(q.Get("search")))
 	list := []meterSummary{}
@@ -166,7 +208,15 @@ func (s *Server) listMeters(w http.ResponseWriter, r *http.Request) {
 			return list[i].MeterID < list[j].MeterID
 		})
 	}
-	writeJSON(w, http.StatusOK, list)
+
+	// Without an explicit sort the order is by meter_id (allSummaries), which keeps pages stable.
+	total := len(list)
+	start := (page - 1) * pageSize
+	items := []meterSummary{}
+	if start < total {
+		items = list[start:min(start+pageSize, total)]
+	}
+	writeJSON(w, http.StatusOK, meterPage{Items: items, Total: total, Page: page, PageSize: pageSize, Counts: counts})
 }
 
 func (s *Server) getMeter(w http.ResponseWriter, r *http.Request) {

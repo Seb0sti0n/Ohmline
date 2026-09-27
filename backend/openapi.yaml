@@ -48,15 +48,17 @@ paths:
 
   /meters:
     get:
-      summary: Meters with last-day consumption, baseline, variation, status and anomaly
+      summary: One page of meters with last-day consumption, baseline, variation, status and anomaly
       description: The baseline is computed from the readings, so this works before the first analysis. `status` and `anomaly` come from the latest completed analysis (`status` is `UNEVALUATED` until there is one).
       parameters:
         - { name: status, in: query, schema: { type: string, enum: [ALL, OK, ALERT, CRITICAL, UNEVALUATED] }, description: Case-insensitive }
         - { name: search, in: query, schema: { type: string }, description: Substring of meter_id }
         - { name: sort, in: query, schema: { type: string, enum: [consumption, variation, severity] }, description: "`variation` sorts by absolute value (the biggest change first, up or down)" }
         - { name: order, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 10 } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/MeterSummary" } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MeterPage" } } } }
         "400": { $ref: "#/components/responses/BadRequest" }
 
   /meters/{meterId}:
@@ -225,6 +227,26 @@ components:
     Severity: { type: string, enum: [HIGH, MEDIUM, LOW] }
     AnomalyType: { type: string, enum: [REAL_ANOMALY, EXPLAINABLE_ANOMALY, FALSE_POSITIVE, DATA_QUALITY] }
     AnomalyStatus: { type: string, enum: [OPEN, ACKNOWLEDGED, RESOLVED] }
+
+    MeterPage:
+      type: object
+      description: >
+        Filters, search and sort are applied to the whole list first, then it is cut into pages (without an
+        explicit sort the order is by meter_id, so pages are stable). A page past the end is empty, not an error.
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/MeterSummary" } }
+        total: { type: integer, description: Meters matching the filters, across all pages }
+        page: { type: integer }
+        page_size: { type: integer }
+        counts:
+          type: object
+          description: Meters per status over ALL meters, ignoring filters and search (for the filter chips).
+          properties:
+            ALL: { type: integer }
+            OK: { type: integer }
+            ALERT: { type: integer }
+            CRITICAL: { type: integer }
+            UNEVALUATED: { type: integer }
 
     MeterSummary:
       type: object

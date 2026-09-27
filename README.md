@@ -119,8 +119,9 @@ The engine decides type, severity, priority and confidence; the LLM only **write
 REST under `/api`, documented in [backend/openapi.yaml](backend/openapi.yaml). JWT auth (`POST /api/auth/login`) on
 everything except `/health`. Main flow: `POST /ai/analyze` starts a run in a goroutine (409 if one is already
 running), `GET /ai/analysis/{id}` reports the stage and per-stage state, and `GET /anomalies` returns the
-anomalies of the latest completed run ordered by priority. `GET /meters` supports `status`, `search`, `sort`
-(`consumption`, `variation`, `severity`) and `order`; `GET /meters/{id}/readings` returns the series with the
+anomalies of the latest completed run ordered by priority. `GET /meters` is **paginated** (`page`, `page_size` — default 10, max 100) and supports `status`, `search`, `sort`
+(`consumption`, `variation`, `severity`) and `order`; it answers `{items, total, page, page_size, counts}`, where `counts` is the number
+of meters per status over all meters, for the filter chips; `GET /meters/{id}/readings` returns the series with the
 baseline band for each point (`granularity=hour|day`).
 
 The engine runs as one pure computation during the "Detección" stage; the seven stages of the stepper mirror the
@@ -141,7 +142,8 @@ Vue 3 + Vite + TypeScript, Pinia, Vue Router, Tailwind v4 and ECharts. The UI fo
 
 Screens: login (demo credentials prefilled), the dashboard (analysis card with the 7-stage stepper, KPI
 strip, daily consumption chart with baseline, "Qué atender primero", meter status tiles) and the meters table
-(status filters with counters, search by meter code, sort by consumption / variation / status, 14-day sparklines).
+(status filters with counters, search by meter code, sort by consumption / variation / status, 14-day sparklines,
+and pagination with 10 / 25 / 50 rows per page: the API cuts the list, so the table stays light with any number of meters).
 Filters, search and sorting are sent to the API (`GET /meters?status=&search=&sort=&order=`); the counters come from
 an unfiltered request.
 
@@ -187,6 +189,9 @@ Limitations (this is an MVP, not production)
   assumes it contains no anomalies (true here); a real system would use more history and weekly seasonality.
 - One anomaly per meter (its highest-priority window). Hours are UTC. Data is loaded by the seed: no live ingestion,
   no meter CRUD, one demo user, no roles, no rate limiting on login. Change `JWT_SECRET` before showing this to anyone.
+- Pagination limits what is sent and drawn, not what is computed: each `GET /meters` still builds the summary of every
+  meter (baseline and last-day totals) before cutting the page. That is instant for tens of meters (about 20 ms for 72 in a
+  test); with thousands you would precompute the summaries when the analysis runs and paginate in SQL.
 - Running a new analysis replaces the visible anomalies with the new run's (their ids change, acknowledged/resolved states reset).
 - The stepper shows the real stage of the run, but the engine itself is a single fast computation; each stage pauses
   `ANALYSIS_STEP_DELAY_MS` (default 600) so progress is visible.

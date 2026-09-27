@@ -174,6 +174,35 @@ type meterRow struct {
 	DailyFrom    string    `json:"daily_from"`
 }
 
+// meterPageResp is the paginated meters list.
+type meterPageResp struct {
+	Items    []meterRow     `json:"items"`
+	Total    int            `json:"total"`
+	Page     int            `json:"page"`
+	PageSize int            `json:"page_size"`
+	Counts   map[string]int `json:"counts"`
+}
+
+// page fetches one page of meters with the given query string (without a leading "?").
+func (e *testEnv) page(query string) meterPageResp {
+	e.t.Helper()
+	path := "/api/meters"
+	if query != "" {
+		path += "?" + query
+	}
+	return decode[meterPageResp](e.t, e.mustGet(path, 200))
+}
+
+// meterList fetches every meter matching the query, using the largest page.
+func (e *testEnv) meterList(query string) []meterRow {
+	e.t.Helper()
+	q := "page_size=100"
+	if query != "" {
+		q = query + "&" + q
+	}
+	return e.page(q).Items
+}
+
 func meterIDs(ms []meterRow) []string {
 	out := []string{}
 	for _, m := range ms {
@@ -232,7 +261,7 @@ func TestAuth(t *testing.T) {
 func TestBeforeAnyAnalysis(t *testing.T) {
 	e := newEnv(t, 0)
 
-	ms := decode[[]meterRow](t, e.mustGet("/api/meters", 200))
+	ms := e.meterList("")
 	if len(ms) != 12 {
 		t.Fatalf("got %d meters, want 12", len(ms))
 	}
@@ -243,14 +272,14 @@ func TestBeforeAnyAnalysis(t *testing.T) {
 		}
 	}
 	for status, want := range map[string]int{"unevaluated": 12, "ok": 0, "alert": 0, "critical": 0} {
-		if got := decode[[]meterRow](t, e.mustGet("/api/meters?status="+status, 200)); len(got) != want {
+		if got := e.meterList("status=" + status); len(got) != want {
 			t.Errorf("status=%s before analysis returned %d meters, want %d", status, len(got), want)
 		}
 	}
 	if d := decode[meterRow](t, e.mustGet("/api/meters/M-109", 200)); d.Status != "UNEVALUATED" {
 		t.Errorf("M-109 detail status = %s before analysis", d.Status)
 	}
-	byVar := decode[[]meterRow](t, e.mustGet("/api/meters?sort=variation", 200))
+	byVar := e.meterList("sort=variation")
 	if byVar[0].MeterID != "M-109" || byVar[0].VariationPct < 105 || byVar[0].VariationPct > 115 {
 		t.Errorf("first by variation = %+v, want M-109 ≈ +110%%", byVar[0])
 	}
@@ -258,7 +287,7 @@ func TestBeforeAnyAnalysis(t *testing.T) {
 		t.Errorf("second by variation = %s, want M-104", byVar[1].MeterID)
 	}
 	// Variation sorts by size of the change, up or down: M-110 (-0.1%) is the smallest, not M-105 (-1.4%).
-	smallest := decode[[]meterRow](t, e.mustGet("/api/meters?sort=variation&order=asc", 200))
+	smallest := e.meterList("sort=variation&order=asc")
 	if smallest[0].MeterID != "M-110" {
 		t.Errorf("smallest variation = %s, want M-110 (sorted by absolute value)", smallest[0].MeterID)
 	}
@@ -283,14 +312,14 @@ func TestBeforeAnyAnalysis(t *testing.T) {
 	if d := byID["M-109"].DailyKWh; d[13] < 2200 || d[13] > 2215 || d[0] > 1100 {
 		t.Errorf("M-109 daily series = %v", d)
 	}
-	asc := decode[[]meterRow](t, e.mustGet("/api/meters?sort=consumption&order=asc", 200))
+	asc := e.meterList("sort=consumption&order=asc")
 	if asc[0].MeterID != "M-107" || asc[11].MeterID != "M-109" {
 		t.Errorf("consumption asc = %v", meterIDs(asc))
 	}
-	if got := meterIDs(decode[[]meterRow](t, e.mustGet("/api/meters?search=11", 200))); !eq(got, []string{"M-110", "M-111", "M-112"}) {
+	if got := meterIDs(e.meterList("search=11")); !eq(got, []string{"M-110", "M-111", "M-112"}) {
 		t.Errorf("search 11 = %v", got)
 	}
-	if got := decode[[]meterRow](t, e.mustGet("/api/meters?search=zzz", 200)); len(got) != 0 {
+	if got := e.meterList("search=zzz"); len(got) != 0 {
 		t.Errorf("search zzz = %v", got)
 	}
 	for _, bad := range []string{"status=nope", "sort=nope", "order=up"} {
@@ -412,12 +441,12 @@ func TestAnalysisCycle(t *testing.T) {
 	e.mustGet("/api/anomalies/abc", 400)
 
 	// Meter statuses are derived from the anomalies; filters and severity sort use them.
-	if left := decode[[]meterRow](t, e.mustGet("/api/meters?status=unevaluated", 200)); len(left) != 0 {
+	if left := e.meterList("status=unevaluated"); len(left) != 0 {
 		t.Errorf("%d meters still unevaluated after an analysis", len(left))
 	}
-	crit := decode[[]meterRow](t, e.mustGet("/api/meters?status=critical", 200))
-	alert := decode[[]meterRow](t, e.mustGet("/api/meters?status=alert", 200))
-	ok := decode[[]meterRow](t, e.mustGet("/api/meters?status=ok", 200))
+	crit := e.meterList("status=critical")
+	alert := e.meterList("status=alert")
+	ok := e.meterList("status=ok")
 	if !eq(meterIDs(crit), []string{"M-109"}) || !eq(meterIDs(alert), []string{"M-104", "M-112"}) || len(ok) != 9 {
 		t.Errorf("critical=%v alert=%v ok=%d", meterIDs(crit), meterIDs(alert), len(ok))
 	}
@@ -426,7 +455,7 @@ func TestAnalysisCycle(t *testing.T) {
 			t.Errorf("M-106 should be OK but still show its explained anomaly: %+v", m)
 		}
 	}
-	sorted := decode[[]meterRow](t, e.mustGet("/api/meters?sort=severity", 200))
+	sorted := e.meterList("sort=severity")
 	if !eq(meterIDs(sorted)[:4], []string{"M-109", "M-112", "M-104", "M-106"}) {
 		t.Errorf("severity order = %v", meterIDs(sorted))
 	}
@@ -627,4 +656,87 @@ func TestReadingsAndEvents(t *testing.T) {
 		t.Errorf("M-101 events = %v", got)
 	}
 	e.mustGet("/api/meters/M-999/events", 404)
+}
+
+func TestMetersPagination(t *testing.T) {
+	e := newEnv(t, 0)
+	// A stable order across pages: without an explicit sort it is by meter_id.
+	all := e.meterList("")
+	if len(all) != 12 {
+		t.Fatalf("got %d meters", len(all))
+	}
+
+	t.Run("defaults to 10 per page and says how many there are in total", func(t *testing.T) {
+		p := e.page("")
+		if p.Page != 1 || p.PageSize != 10 || p.Total != 12 || len(p.Items) != 10 {
+			t.Errorf("page=%d size=%d total=%d items=%d, want 1, 10, 12, 10", p.Page, p.PageSize, p.Total, len(p.Items))
+		}
+	})
+
+	t.Run("walks through every meter exactly once", func(t *testing.T) {
+		var seen []string
+		for page := 1; page <= 3; page++ {
+			p := e.page("page_size=5&page=" + itoa(page))
+			if p.Total != 12 || p.Page != page || p.PageSize != 5 {
+				t.Errorf("page %d: %+v", page, p)
+			}
+			seen = append(seen, meterIDs(p.Items)...)
+		}
+		if len(seen) != 12 || !eq(seen, meterIDs(all)) {
+			t.Errorf("pages joined = %v, want %v", seen, meterIDs(all))
+		}
+	})
+
+	t.Run("the last page is partial and a page past the end is empty, not an error", func(t *testing.T) {
+		if got := len(e.page("page_size=5&page=3").Items); got != 2 {
+			t.Errorf("last page has %d items, want 2", got)
+		}
+		p := e.page("page_size=5&page=9")
+		if len(p.Items) != 0 || p.Total != 12 {
+			t.Errorf("page 9: %d items, total %d", len(p.Items), p.Total)
+		}
+	})
+
+	t.Run("sorting applies to the whole list before it is cut into pages", func(t *testing.T) {
+		// Highest consumption overall is M-109 (2208 kWh), then M-104: they lead page 1, not "the top of each page".
+		first := e.page("sort=consumption&order=desc&page_size=2&page=1")
+		second := e.page("sort=consumption&order=desc&page_size=2&page=2")
+		if !eq(meterIDs(first.Items), []string{"M-109", "M-104"}) {
+			t.Errorf("page 1 by consumption = %v", meterIDs(first.Items))
+		}
+		if second.Items[0].Consumption > first.Items[1].Consumption {
+			t.Errorf("page 2 starts higher than page 1 ends: %v", meterIDs(second.Items))
+		}
+	})
+
+	t.Run("total follows the filters, counts do not", func(t *testing.T) {
+		p := e.page("search=11&page_size=2")
+		if p.Total != 3 || len(p.Items) != 2 {
+			t.Errorf("search=11: total %d, %d items, want 3 and 2", p.Total, len(p.Items))
+		}
+		if p.Counts["ALL"] != 12 || p.Counts["UNEVALUATED"] != 12 {
+			t.Errorf("counts must cover all meters regardless of the search: %v", p.Counts)
+		}
+	})
+
+	t.Run("counts by status after an analysis", func(t *testing.T) {
+		e.analyze()
+		p := e.page("status=alert&page_size=1")
+		if p.Total != 2 || len(p.Items) != 1 {
+			t.Errorf("status=alert: total %d, %d items, want 2 and 1", p.Total, len(p.Items))
+		}
+		want := map[string]int{"ALL": 12, "OK": 9, "ALERT": 2, "CRITICAL": 1, "UNEVALUATED": 0}
+		for k, v := range want {
+			if p.Counts[k] != v {
+				t.Errorf("counts[%s] = %d, want %d (%v)", k, p.Counts[k], v, p.Counts)
+			}
+		}
+	})
+
+	t.Run("rejects invalid paging parameters", func(t *testing.T) {
+		for _, bad := range []string{"page=0", "page=-1", "page=x", "page_size=0", "page_size=101", "page_size=x", "page_size=1.5"} {
+			e.mustGet("/api/meters?"+bad, 400)
+		}
+		e.mustGet("/api/meters?page_size=100", 200) // the largest allowed
+	})
 }

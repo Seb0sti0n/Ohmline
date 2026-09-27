@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import ErrorState from '@/components/ErrorState.vue'
 import MetersTable from '@/components/MetersTable.vue'
+import PaginationBar from '@/components/PaginationBar.vue'
 import { useMetersStore } from '@/stores/meters'
 import type { MeterFilter } from '@/types/api'
 
@@ -58,7 +59,7 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
         @click="meters.setFilter(f.key)"
       >
         {{ f.label
-        }}<span v-if="meters.all.length && !statusLocked(f.key)" class="font-medium opacity-80">{{
+        }}<span v-if="meters.counts.ALL && !statusLocked(f.key)" class="font-medium opacity-80">{{
           meters.counts[f.key]
         }}</span>
       </button>
@@ -119,5 +120,14 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
     <p v-if="meters.rows.length === 0" class="px-7 py-7 text-body text-ink-muted">
       Ningún medidor coincide con la búsqueda. Revisa el código o cambia el filtro.
     </p>
+    <PaginationBar
+      v-if="meters.total > 0"
+      :page="meters.page"
+      :page-count="meters.pageCount"
+      :page-size="meters.pageSize"
+      :total="meters.total"
+      @page="meters.setPage"
+      @size="meters.setPageSize"
+    />
   </section>
 </template>

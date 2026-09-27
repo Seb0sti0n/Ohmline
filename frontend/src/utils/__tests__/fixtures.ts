@@ -230,3 +230,12 @@ export function points(
     ...f(i),
   }))
 }
+
+import type { MeterPage } from '@/types/api'
+
+/** A page of the meters list. Counts are computed from the items unless given (they cover all meters). */
+export function meterPage(items: MeterSummary[], over: Partial<MeterPage> = {}): MeterPage {
+  const counts = { ALL: items.length, OK: 0, ALERT: 0, CRITICAL: 0, UNEVALUATED: 0 }
+  for (const m of items) counts[m.status]++
+  return { items, total: items.length, page: 1, page_size: 10, counts, ...over }
+}
