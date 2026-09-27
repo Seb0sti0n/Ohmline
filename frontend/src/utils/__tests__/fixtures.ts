@@ -53,6 +53,7 @@ export function meter(id: string, over: Partial<MeterSummary> = {}): MeterSummar
     variation_pct: 0,
     daily_kwh: Array(14).fill(700),
     daily_from: '2026-09-01',
+    isolated_spikes: 0,
     anomaly: null,
     ...over,
   }
@@ -190,6 +191,7 @@ export function evidence(over: Partial<Evidence> = {}): Evidence {
 export function anomaly(over: Partial<Anomaly> = {}): Anomaly {
   return {
     id: 1,
+    anomaly: true,
     meter_id: 'M-109',
     meter_name: 'Tablero principal B',
     analysis_run_id: 1,

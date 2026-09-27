@@ -8,6 +8,8 @@ export type AnomalyStatus = 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED'
 
 export interface Anomaly {
   id: number
+  /** Always true: every row is a finding (the output format of the brief). */
+  anomaly: boolean
   meter_id: string
   meter_name: string
   analysis_run_id: number
@@ -90,6 +92,8 @@ export interface MeterSummary {
   variation_pct: number
   daily_kwh: number[]
   daily_from: string
+  /** Short runs outside the expected band: counted from the data, normal noise, never an anomaly. */
+  isolated_spikes: number
   anomaly: Anomaly | null
 }
 

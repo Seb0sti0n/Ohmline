@@ -217,3 +217,24 @@ func TestEvidenceTextsAreForOperators(t *testing.T) {
 		}
 	}
 }
+
+// Isolated spikes (short runs outside the band) are detected but are noise: the eight healthy meters have
+// plenty of them (M-107 has 23) and must still produce no anomaly.
+func TestIsolatedSpikesAreNotAnomalies(t *testing.T) {
+	by, events := loadFixture(t)
+	cfg := config.DefaultEngine()
+	results := map[string]bool{}
+	for _, r := range Run(flatten(by), events, cfg) {
+		results[r.MeterID] = true
+	}
+	for _, id := range []string{"M-101", "M-102", "M-103", "M-105", "M-107", "M-108", "M-110", "M-111"} {
+		rs := by[id]
+		_, spikes := DetectConsumption(rs, BuildBaseline(rs, cfg), cfg)
+		if spikes == 0 {
+			t.Errorf("%s: expected some isolated spikes in the real data, found none", id)
+		}
+		if results[id] {
+			t.Errorf("%s has %d isolated spikes and must not be reported as an anomaly", id, spikes)
+		}
+	}
+}

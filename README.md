@@ -82,7 +82,7 @@ Pipeline: readings → baseline → detection → correlation → events → exp
 | Step | What it does | Why |
 |---|---|---|
 | Baseline | Median and scaled MAD of consumption, voltage, current and PF **per hour of day**, from the first 7 days | The load has a strong daily pattern, so a single average would flag every morning. Median/MAD are robust to outliers |
-| Consumption detection | Robust z-score per reading; a **persistent change** is ≥ 6 consecutive hours with \|z\| > 4 in the same direction | Isolated 1–2 h spikes are normal noise and never become anomalies |
+| Consumption detection | Robust z-score per reading; a **persistent change** is ≥ 6 consecutive hours with \|z\| > 4 in the same direction | Isolated spikes (shorter runs) are normal noise: they are counted and shown on the meter detail ("picos aislados") but never become anomalies |
 | Data quality | Flags voltage outside ±5% of 220 V, voltage jumps > 10 V, PF jumps > 0.2, kWh not matching V·I·PF (±30%). Recurrent = ≥ 5 flagged hours within 24 h, **and** no persistent consumption change | Quality problems are found in the readings. The `status` column is always `OK`, and the event type is never used as a label |
 | Correlation | For each window: Δ current, Δ PF, Δ mean voltage, Δ voltage spread vs baseline | A rise in consumption with a PF drop points to a load or installation problem |
 | Events | An event within 6 h before / 2 h after the window start explains it only if it is **compatible**: an outage must match the described duration and consumption must return to baseline; an operational change must be an upward step without electrical deterioration. `UNKNOWN` never explains. `DATA_QUALITY` only corroborates | Time coincidence alone is not an explanation |
@@ -119,7 +119,8 @@ The engine decides type, severity, priority and confidence; the LLM only **write
 REST under `/api`, documented in [backend/openapi.yaml](backend/openapi.yaml). JWT auth (`POST /api/auth/login`) on
 everything except `/health`. Main flow: `POST /ai/analyze` starts a run in a goroutine (409 if one is already
 running), `GET /ai/analysis/{id}` reports the stage and per-stage state, and `GET /anomalies` returns the
-anomalies of the latest completed run ordered by priority. `GET /meters` is **paginated** (`page`, `page_size` — default 10, max 100) and supports `status`, `search`, `sort`
+anomalies of the latest completed run ordered by priority, each in the output format of the brief
+(`meter_id`, `anomaly: true`, `type`, `severity`, `confidence`, `reason`, `recommended_action`, plus the priority and evidence). `GET /meters` is **paginated** (`page`, `page_size` — default 10, max 100) and supports `status`, `search`, `sort`
 (`consumption`, `variation`, `severity`) and `order`; it answers `{items, total, page, page_size, counts}`, where `counts` is the number
 of meters per status over all meters, for the filter chips; `GET /meters/{id}/readings` returns the series with the
 baseline band for each point (`granularity=hour|day`).

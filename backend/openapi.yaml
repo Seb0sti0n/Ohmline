@@ -258,6 +258,7 @@ components:
         consumption_kwh: { type: number, description: Last 24 hours }
         baseline_kwh: { type: number, description: Expected daily consumption }
         variation_pct: { type: number }
+        isolated_spikes: { type: integer, description: Short runs of readings far outside the expected band. Counted from the data (no analysis needed); normal noise, never classified as an anomaly }
         daily_from: { type: string, example: "2026-09-01", description: Date of the first daily value }
         daily_kwh: { type: array, items: { type: number }, description: Consumption per UTC day (14 values), for the sparkline }
         anomaly: { allOf: [{ $ref: "#/components/schemas/Anomaly" }], nullable: true }
@@ -284,6 +285,7 @@ components:
         detail endpoint.
       properties:
         id: { type: integer }
+        anomaly: { type: boolean, description: Always true; part of the output format of the brief }
         meter_id: { type: string }
         meter_name: { type: string }
         analysis_run_id: { type: integer }

@@ -18,12 +18,15 @@ import (
 
 type meterSummary struct {
 	db.Meter
-	ConsumptionKWh float64     `json:"consumption_kwh"` // last 24 h
-	BaselineKWh    float64     `json:"baseline_kwh"`    // expected daily consumption
-	VariationPct   float64     `json:"variation_pct"`
-	DailyKWh       []float64   `json:"daily_kwh"`  // consumption per UTC day, for the sparkline
-	DailyFrom      string      `json:"daily_from"` // YYYY-MM-DD of the first daily value
-	Anomaly        *db.Anomaly `json:"anomaly"`    // from the latest completed analysis, or null
+	ConsumptionKWh float64   `json:"consumption_kwh"` // last 24 h
+	BaselineKWh    float64   `json:"baseline_kwh"`    // expected daily consumption
+	VariationPct   float64   `json:"variation_pct"`
+	DailyKWh       []float64 `json:"daily_kwh"`  // consumption per UTC day, for the sparkline
+	DailyFrom      string    `json:"daily_from"` // YYYY-MM-DD of the first daily value
+	// IsolatedSpikes counts short runs of readings far outside the expected band (fewer consecutive hours
+	// than a persistent change needs). They are normal noise: shown, but never classified as an anomaly.
+	IsolatedSpikes int         `json:"isolated_spikes"`
+	Anomaly        *db.Anomaly `json:"anomaly"` // from the latest completed analysis, or null
 }
 
 func r1(v float64) float64 { return math.Round(v*10) / 10 }
@@ -36,6 +39,7 @@ func summarizeMeter(m db.Meter, rs []engine.Reading, cfg config.Engine, a *db.An
 		return s
 	}
 	b := engine.BuildBaseline(rs, cfg)
+	_, s.IsolatedSpikes = engine.DetectConsumption(rs, b, cfg)
 	last := rs
 	if len(last) > 24 {
 		last = last[len(last)-24:]

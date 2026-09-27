@@ -6,6 +6,7 @@ import ErrorState from '@/components/ErrorState.vue'
 import HourlySeriesChart from '@/components/HourlySeriesChart.vue'
 import MeterEventsCard from '@/components/meter/MeterEventsCard.vue'
 import MeterKpis from '@/components/meter/MeterKpis.vue'
+import SpikesNote from '@/components/meter/SpikesNote.vue'
 import SeriesCard from '@/components/meter/SeriesCard.vue'
 import VerdictBar from '@/components/meter/VerdictBar.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
@@ -102,6 +103,7 @@ const markerLabel = computed(() =>
         :marker-label="markerLabel"
         :description="`Consumo horario de ${detail.meter.meter_id} frente a su banda de baseline`"
       />
+      <SpikesNote :count="detail.meter.isolated_spikes" />
     </section>
 
     <div class="grid grid-cols-3 gap-4">

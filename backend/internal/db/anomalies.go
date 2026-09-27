@@ -12,7 +12,10 @@ import (
 
 // Anomaly is an anomaly row joined with its meter. Evidence is only filled by Anomaly (detail).
 type Anomaly struct {
-	ID                int             `json:"id"`
+	ID int `json:"id"`
+	// Anomaly is always true: every row is a finding. It is part of the output format of the brief
+	// ({"meter_id": ..., "anomaly": true, "type": ...}), so consumers can read it as is.
+	Anomaly           bool            `json:"anomaly"`
 	MeterID           string          `json:"meter_id"`
 	MeterName         string          `json:"meter_name"`
 	AnalysisRunID     int             `json:"analysis_run_id"`
@@ -48,6 +51,7 @@ func scanAnomaly(row pgx.Row, withEvidence bool) (*Anomaly, error) {
 		return nil, err
 	}
 	a.Evidence = evidence
+	a.Anomaly = true
 	return &a, nil
 }
 

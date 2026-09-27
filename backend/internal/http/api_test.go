@@ -172,6 +172,7 @@ type meterRow struct {
 	Location     string    `json:"location"`
 	DailyKWh     []float64 `json:"daily_kwh"`
 	DailyFrom    string    `json:"daily_from"`
+	Spikes       int       `json:"isolated_spikes"`
 }
 
 // meterPageResp is the paginated meters list.
@@ -301,6 +302,12 @@ func TestBeforeAnyAnalysis(t *testing.T) {
 	if m := byID["M-101"]; m.Name != "Compresores A" || m.Location != "Planta Norte" {
 		t.Errorf("M-101 name/location = %q / %q", m.Name, m.Location)
 	}
+	// Isolated spikes are counted (raw data, no analysis needed) but never turn a meter into an anomaly.
+	for id, want := range map[string]int{"M-101": 8, "M-107": 23, "M-112": 3} {
+		if got := byID[id].Spikes; got != want {
+			t.Errorf("%s isolated spikes = %d, want %d", id, got, want)
+		}
+	}
 	if got := byID["M-101"].DailyFrom; got != "2026-09-01" {
 		t.Errorf("daily_from = %q, want 2026-09-01", got)
 	}
@@ -379,6 +386,7 @@ func TestAnalysisCycle(t *testing.T) {
 
 	type anomaly struct {
 		ID            int
+		Anomaly       *bool
 		MeterID       string `json:"meter_id"`
 		Type          string
 		Severity      string
@@ -430,8 +438,18 @@ func TestAnalysisCycle(t *testing.T) {
 	}
 	e.mustGet("/api/anomalies?type=nope", 400)
 
+	// The output format of the brief has "anomaly": true on every finding (list and detail).
+	for _, a := range list {
+		if a.Anomaly == nil || !*a.Anomaly {
+			t.Errorf("%s: missing \"anomaly\": true in the list", a.MeterID)
+		}
+	}
+
 	// Detail includes the evidence.
 	d := decode[anomaly](t, e.mustGet("/api/anomalies/"+itoa(list[0].ID), 200))
+	if d.Anomaly == nil || !*d.Anomaly {
+		t.Errorf("missing \"anomaly\": true in the detail")
+	}
 	for _, k := range []string{"window", "metrics", "changed_variables", "events", "rules_fired", "priority_breakdown", "confidence_breakdown"} {
 		if _, ok := d.Evidence[k]; !ok {
 			t.Errorf("evidence is missing %q", k)
