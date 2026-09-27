@@ -67,4 +67,14 @@ describe('MetersTable', () => {
   it('draws a sparkline per row', () => {
     expect(mountTable().findAll('tbody svg')).toHaveLength(2)
   })
+
+  it('says "Sin evaluar" (not "Normal") for a meter that has not been analysed', () => {
+    const w = mount(MetersTable, {
+      props: { rows: [meter('M-101', { status: 'UNEVALUATED' })], sort: 'severity', order: 'desc' },
+      global: { stubs },
+    })
+    const row = w.find('tbody tr').text()
+    expect(row).toContain('Sin evaluar')
+    expect(row).not.toContain('Normal')
+  })
 })

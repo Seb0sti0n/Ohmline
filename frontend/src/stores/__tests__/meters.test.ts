@@ -30,7 +30,8 @@ describe('meters store', () => {
     const s = useMetersStore()
     await s.load()
     expect(s.rows).toHaveLength(5)
-    expect(s.counts).toEqual({ ALL: 5, OK: 2, ALERT: 2, CRITICAL: 1 })
+    expect(s.counts).toEqual({ ALL: 5, OK: 2, ALERT: 2, CRITICAL: 1, UNEVALUATED: 0 })
+    expect(s.unevaluated).toBe(false)
     // default query: severity, descending, nothing else
     expect(getMeters).toHaveBeenCalledWith({
       status: undefined,
@@ -101,5 +102,41 @@ describe('meters store', () => {
     expect(s.rows).toHaveLength(5)
     await s.setFilter('ALL')
     expect(s.error).toBeNull()
+  })
+
+  describe('before the first analysis', () => {
+    const fresh = [
+      meter('M-101', { status: 'UNEVALUATED' }),
+      meter('M-102', { status: 'UNEVALUATED' }),
+    ]
+
+    it('knows that no meter has a status yet', async () => {
+      getMeters.mockResolvedValue(fresh)
+      const s = useMetersStore()
+      await s.load()
+      expect(s.unevaluated).toBe(true)
+      expect(s.counts).toMatchObject({ ALL: 2, UNEVALUATED: 2, OK: 0, ALERT: 0, CRITICAL: 0 })
+    })
+
+    it('is not "unevaluated" when the list is empty or only some meters lack a status', async () => {
+      const s = useMetersStore()
+      getMeters.mockResolvedValue([])
+      await s.load()
+      expect(s.unevaluated).toBe(false)
+      getMeters.mockResolvedValue([meter('M-101', { status: 'UNEVALUATED' }), meter('M-102')])
+      await s.load()
+      expect(s.unevaluated).toBe(false)
+    })
+
+    it('drops a leftover status filter, which would show an empty table', async () => {
+      const s = useMetersStore()
+      await s.load()
+      await s.setFilter('CRITICAL') // chosen while an analysis existed
+      getMeters.mockResolvedValue(fresh) // ...then the data was reset
+      await s.load()
+      expect(s.filter).toBe('ALL')
+      expect(getMeters).toHaveBeenLastCalledWith(expect.objectContaining({ status: undefined }))
+      expect(s.rows).toHaveLength(2)
+    })
   })
 })

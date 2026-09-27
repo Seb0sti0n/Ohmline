@@ -49,9 +49,9 @@ paths:
   /meters:
     get:
       summary: Meters with last-day consumption, baseline, variation, status and anomaly
-      description: The baseline is computed from the readings, so this works before the first analysis. `status` and `anomaly` come from the latest completed analysis.
+      description: The baseline is computed from the readings, so this works before the first analysis. `status` and `anomaly` come from the latest completed analysis (`status` is `UNEVALUATED` until there is one).
       parameters:
-        - { name: status, in: query, schema: { type: string, enum: [ALL, OK, ALERT, CRITICAL] }, description: Case-insensitive }
+        - { name: status, in: query, schema: { type: string, enum: [ALL, OK, ALERT, CRITICAL, UNEVALUATED] }, description: Case-insensitive }
         - { name: search, in: query, schema: { type: string }, description: Substring of meter_id }
         - { name: sort, in: query, schema: { type: string, enum: [consumption, variation, severity] }, description: "`variation` sorts by absolute value (the biggest change first, up or down)" }
         - { name: order, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
@@ -216,7 +216,12 @@ components:
   schemas:
     Error: { type: object, properties: { error: { type: string } } }
     Health: { type: object, properties: { status: { type: string }, db: { type: string } } }
-    MeterStatus: { type: string, enum: [OK, ALERT, CRITICAL] }
+    MeterStatus:
+      type: string
+      enum: [OK, ALERT, CRITICAL, UNEVALUATED]
+      description: >
+        Derived from the latest completed analysis. `UNEVALUATED` until the first analysis completes:
+        the API does not claim `OK` for a meter nobody has analysed yet.
     Severity: { type: string, enum: [HIGH, MEDIUM, LOW] }
     AnomalyType: { type: string, enum: [REAL_ANOMALY, EXPLAINABLE_ANOMALY, FALSE_POSITIVE, DATA_QUALITY] }
     AnomalyStatus: { type: string, enum: [OPEN, ACKNOWLEDGED, RESOLVED] }

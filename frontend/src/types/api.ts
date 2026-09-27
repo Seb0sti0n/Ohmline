@@ -1,6 +1,7 @@
 // Shapes returned by the backend (see backend/openapi.yaml).
 
-export type MeterStatus = 'OK' | 'ALERT' | 'CRITICAL'
+/** UNEVALUATED until the first analysis completes: the API does not claim a meter is fine before that. */
+export type MeterStatus = 'OK' | 'ALERT' | 'CRITICAL' | 'UNEVALUATED'
 export type Severity = 'HIGH' | 'MEDIUM' | 'LOW'
 export type AnomalyType = 'REAL_ANOMALY' | 'EXPLAINABLE_ANOMALY' | 'FALSE_POSITIVE' | 'DATA_QUALITY'
 export type AnomalyStatus = 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED'

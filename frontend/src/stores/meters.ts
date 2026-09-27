@@ -20,7 +20,13 @@ export const useMetersStore = defineStore('meters', () => {
     OK: all.value.filter((m) => m.status === 'OK').length,
     ALERT: all.value.filter((m) => m.status === 'ALERT').length,
     CRITICAL: all.value.filter((m) => m.status === 'CRITICAL').length,
+    UNEVALUATED: all.value.filter((m) => m.status === 'UNEVALUATED').length,
   }))
+
+  /** True until the first analysis completes: no meter has a status to filter by yet. */
+  const unevaluated = computed(
+    () => all.value.length > 0 && counts.value.UNEVALUATED === all.value.length,
+  )
 
   const query = computed<MeterQuery>(() => ({
     status: filter.value === 'ALL' ? undefined : filter.value,
@@ -51,6 +57,11 @@ export const useMetersStore = defineStore('meters', () => {
     try {
       const [everything] = await Promise.all([getMeters().catch(() => null), fetchRows()])
       if (everything) all.value = everything
+      // A status filter left over from before (e.g. the data was reset) would show an empty table.
+      if (unevaluated.value && filter.value !== 'ALL') {
+        filter.value = 'ALL'
+        await fetchRows()
+      }
     } finally {
       loading.value = false
     }
@@ -86,6 +97,7 @@ export const useMetersStore = defineStore('meters', () => {
     loading,
     error,
     counts,
+    unevaluated,
     query,
     load,
     setFilter,

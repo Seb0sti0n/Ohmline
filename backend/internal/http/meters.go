@@ -71,9 +71,17 @@ func dailyTotals(rs []engine.Reading) []float64 {
 var severityRank = map[string]int{"HIGH": 3, "MEDIUM": 2, "LOW": 1}
 
 // allSummaries builds the summary of every meter, in meter_id order.
+// statusUnevaluated is what a meter's status is until the first analysis completes: the stored
+// status only means something once an analysis has produced it, so we do not claim "OK" before that.
+const statusUnevaluated = "UNEVALUATED"
+
 func (s *Server) allSummaries(r *http.Request) ([]meterSummary, error) {
 	ctx := r.Context()
 	meters, err := s.store.Meters(ctx)
+	if err != nil {
+		return nil, err
+	}
+	analysed, err := s.store.HasCompletedRun(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -95,6 +103,9 @@ func (s *Server) allSummaries(r *http.Request) ([]meterSummary, error) {
 	}
 	out := make([]meterSummary, 0, len(meters))
 	for _, m := range meters {
+		if !analysed {
+			m.Status = statusUnevaluated
+		}
 		out = append(out, summarizeMeter(m, byMeter[m.MeterID], s.cfg.Engine, anomalyOf[m.MeterID]))
 	}
 	return out, nil
@@ -103,8 +114,8 @@ func (s *Server) allSummaries(r *http.Request) ([]meterSummary, error) {
 func (s *Server) listMeters(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	status := strings.ToUpper(q.Get("status"))
-	if status != "" && status != "ALL" && status != "OK" && status != "ALERT" && status != "CRITICAL" {
-		writeError(w, http.StatusBadRequest, "status must be OK, ALERT or CRITICAL")
+	if status != "" && status != "ALL" && status != "OK" && status != "ALERT" && status != "CRITICAL" && status != statusUnevaluated {
+		writeError(w, http.StatusBadRequest, "status must be OK, ALERT, CRITICAL or UNEVALUATED")
 		return
 	}
 	sortBy := q.Get("sort")

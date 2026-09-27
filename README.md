@@ -128,7 +128,9 @@ pipeline and pause `ANALYSIS_STEP_DELAY_MS` (default 600) each so the progress i
 by a previous process are marked `FAILED` on startup.
 
 Meter status is derived from the latest analysis: `REAL_ANOMALY` → CRITICAL, `DATA_QUALITY` and
-`EXPLAINABLE_ANOMALY` → ALERT, `FALSE_POSITIVE` and no anomaly → OK.
+`EXPLAINABLE_ANOMALY` → ALERT, `FALSE_POSITIVE` and no anomaly → OK. Until the first analysis completes every meter is
+`UNEVALUATED` (shown as "Sin evaluar"): the app does not claim a meter is fine before anyone has analysed it, and the
+status filters of the meters table stay locked until then. The variation column still turns red above 10% as a raw signal.
 
 ## Frontend
 

@@ -237,9 +237,18 @@ func TestBeforeAnyAnalysis(t *testing.T) {
 		t.Fatalf("got %d meters, want 12", len(ms))
 	}
 	for _, m := range ms {
-		if m.Status != "OK" || m.Anomaly != nil {
-			t.Errorf("%s: status %s anomaly %v before analysis", m.MeterID, m.Status, m.Anomaly)
+		// Nobody has analysed anything yet: the API must not claim the meters are fine.
+		if m.Status != "UNEVALUATED" || m.Anomaly != nil {
+			t.Errorf("%s: status %s anomaly %v before analysis, want UNEVALUATED and none", m.MeterID, m.Status, m.Anomaly)
 		}
+	}
+	for status, want := range map[string]int{"unevaluated": 12, "ok": 0, "alert": 0, "critical": 0} {
+		if got := decode[[]meterRow](t, e.mustGet("/api/meters?status="+status, 200)); len(got) != want {
+			t.Errorf("status=%s before analysis returned %d meters, want %d", status, len(got), want)
+		}
+	}
+	if d := decode[meterRow](t, e.mustGet("/api/meters/M-109", 200)); d.Status != "UNEVALUATED" {
+		t.Errorf("M-109 detail status = %s before analysis", d.Status)
 	}
 	byVar := decode[[]meterRow](t, e.mustGet("/api/meters?sort=variation", 200))
 	if byVar[0].MeterID != "M-109" || byVar[0].VariationPct < 105 || byVar[0].VariationPct > 115 {
@@ -403,6 +412,9 @@ func TestAnalysisCycle(t *testing.T) {
 	e.mustGet("/api/anomalies/abc", 400)
 
 	// Meter statuses are derived from the anomalies; filters and severity sort use them.
+	if left := decode[[]meterRow](t, e.mustGet("/api/meters?status=unevaluated", 200)); len(left) != 0 {
+		t.Errorf("%d meters still unevaluated after an analysis", len(left))
+	}
 	crit := decode[[]meterRow](t, e.mustGet("/api/meters?status=critical", 200))
 	alert := decode[[]meterRow](t, e.mustGet("/api/meters?status=alert", 200))
 	ok := decode[[]meterRow](t, e.mustGet("/api/meters?status=ok", 200))
@@ -534,6 +546,10 @@ func TestStaleRunsAreFailedOnStartup(t *testing.T) {
 	}
 	if r := decode[run](t, e.mustGet("/api/ai/analysis/"+itoa(id), 200)); r.Status != "FAILED" {
 		t.Errorf("stale run = %s", r.Status)
+	}
+	// A failed run produced no results, so the meters are still unevaluated.
+	if d := decode[meterRow](t, e.mustGet("/api/meters/M-109", 200)); d.Status != "UNEVALUATED" {
+		t.Errorf("status after a failed run = %s, want UNEVALUATED", d.Status)
 	}
 	if r := e.analyze(); r.Status != "COMPLETED" {
 		t.Errorf("new run = %s", r.Status)

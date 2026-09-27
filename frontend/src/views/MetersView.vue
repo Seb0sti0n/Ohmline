@@ -23,6 +23,9 @@ function onSearch() {
   searchTimer = setTimeout(() => void meters.setSearch(searchText.value), 250)
 }
 
+// Before the first analysis no meter has a status, so the status filters have nothing to filter.
+const statusLocked = (key: MeterFilter) => key !== 'ALL' && meters.unevaluated
+
 onMounted(() => void meters.load())
 onBeforeUnmount(() => clearTimeout(searchTimer))
 </script>
@@ -42,7 +45,11 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
         :key="f.key"
         type="button"
         :aria-pressed="meters.filter === f.key"
-        class="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border px-4 text-[15px] font-semibold leading-5"
+        :disabled="statusLocked(f.key)"
+        :title="
+          statusLocked(f.key) ? 'Ejecuta el análisis IA para poder filtrar por estado' : undefined
+        "
+        class="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border px-4 text-[15px] font-semibold leading-5 disabled:cursor-not-allowed disabled:opacity-50"
         :class="
           meters.filter === f.key
             ? 'border-ink bg-ink text-white'
@@ -51,7 +58,7 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
         @click="meters.setFilter(f.key)"
       >
         {{ f.label
-        }}<span v-if="meters.all.length" class="font-medium opacity-80">{{
+        }}<span v-if="meters.all.length && !statusLocked(f.key)" class="font-medium opacity-80">{{
           meters.counts[f.key]
         }}</span>
       </button>
@@ -84,6 +91,14 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
       />
     </label>
   </div>
+
+  <p v-if="meters.unevaluated" class="text-label font-normal text-ink-muted">
+    Los medidores aún no se han evaluado.
+    <RouterLink to="/" class="font-semibold text-brand no-underline hover:text-brand-strong"
+      >Ejecuta el análisis IA</RouterLink
+    >
+    para ver el estado de cada uno.
+  </p>
 
   <ErrorState
     v-if="meters.error && meters.rows.length === 0"

@@ -6,26 +6,30 @@ export const STATUS_LABEL: Record<MeterStatus, string> = {
   OK: 'Normal',
   ALERT: 'Alerta',
   CRITICAL: 'Crítico',
+  UNEVALUATED: 'Sin evaluar',
 }
 
 export const STATUS_TEXT: Record<MeterStatus, string> = {
   OK: 'text-status-ok',
   ALERT: 'text-status-alert',
   CRITICAL: 'text-status-critical',
+  UNEVALUATED: 'text-ink-muted',
 }
 
 export const STATUS_BADGE: Record<MeterStatus, string> = {
   OK: 'bg-status-ok-bg text-status-ok',
   ALERT: 'bg-status-alert-bg text-status-alert',
   CRITICAL: 'bg-status-critical-bg text-status-critical',
+  UNEVALUATED: 'bg-type-false-positive-bg text-type-false-positive',
 }
 
 export const TILE_STYLE: Record<MeterStatus, string> = {
   OK: 'bg-status-ok-bg text-status-ok',
   ALERT: 'bg-status-alert-bg text-status-alert',
   CRITICAL: 'bg-status-critical text-white',
+  UNEVALUATED: 'bg-type-false-positive-bg text-type-false-positive',
 }
-export const TILE_UNEVALUATED = 'bg-type-false-positive-bg text-type-false-positive'
+export const TILE_UNEVALUATED = TILE_STYLE.UNEVALUATED
 
 export const TYPE_LABEL: Record<AnomalyType, string> = {
   REAL_ANOMALY: 'Anomalía real',
