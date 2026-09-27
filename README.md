@@ -9,7 +9,7 @@ The original brief is in [docs/new_project.pdf](docs/new_project.pdf); the desig
 
 ## Quick start
 
-Requirements: Go 1.24+ (the toolchain fetches the exact version in `go.mod`), Node 20+, and a local PostgreSQL
+Requirements: Go 1.24+, Node 20+, and a local PostgreSQL
 (the defaults assume user `postgres` / password `postgres` on `localhost:5432`).
 
 ```bash
