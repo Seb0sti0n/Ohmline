@@ -5,11 +5,11 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/analysis"
-	"github.com/Seb0sti0n/astrophage/backend/internal/config"
-	"github.com/Seb0sti0n/astrophage/backend/internal/db"
-	apihttp "github.com/Seb0sti0n/astrophage/backend/internal/http"
-	"github.com/Seb0sti0n/astrophage/backend/internal/llm"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/analysis"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/config"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/db"
+	apihttp "github.com/Seb0sti0n/Ohmline/backend/internal/http"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/llm"
 )
 
 func main() {

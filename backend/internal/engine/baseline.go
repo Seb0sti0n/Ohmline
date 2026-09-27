@@ -3,7 +3,7 @@ package engine
 import (
 	"time"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/config"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/config"
 )
 
 // HourStat is the median and scaled MAD of a variable at one hour of the day.

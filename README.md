@@ -1,10 +1,10 @@
-# Astrophage
+# Ohmline
 
 AI energy management MVP. It turns the hourly readings of 12 electric meters (14 days) into operational decisions:
 **data → analysis → anomaly → explanation → prioritization → action**. An operator can see in a minute which meter to
 check first and *why* the AI reached that conclusion.
 
-The UI is in Spanish and branded **Ohmline** (from the approved design). Code, comments and docs are in English.
+The UI is in Spanish; code, comments and docs are in English.
 The original brief is in [docs/new_project.pdf](docs/new_project.pdf); the design system and mockups are in [design/](design/).
 
 ## Quick start
@@ -137,7 +137,7 @@ status filters of the meters table stay locked until then. The variation column 
 ## Frontend
 
 Vue 3 + Vite + TypeScript, Pinia, Vue Router, Tailwind v4 and ECharts. The UI follows the approved mockups in
-`design/` (the product is branded **Ohmline** there). `npm run tokens` regenerates `src/assets/theme.css` from
+`design/`. `npm run tokens` regenerates `src/assets/theme.css` from
 `design/tokens.json` (color aliases such as `{ink-muted}` are resolved), so classes like `bg-surface`,
 `text-ink-muted` or `rounded-lg` come straight from the design tokens.
 

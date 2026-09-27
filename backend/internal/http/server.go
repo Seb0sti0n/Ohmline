@@ -10,9 +10,9 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/analysis"
-	"github.com/Seb0sti0n/astrophage/backend/internal/config"
-	"github.com/Seb0sti0n/astrophage/backend/internal/db"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/analysis"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/config"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/db"
 )
 
 type Server struct {

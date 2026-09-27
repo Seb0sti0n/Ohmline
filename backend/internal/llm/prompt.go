@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/engine"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/engine"
 )
 
 const systemPrompt = `Eres un analista energético. Recibes el resultado de un motor de detección de anomalías sobre un medidor eléctrico y debes redactar la explicación para el operador, en español.

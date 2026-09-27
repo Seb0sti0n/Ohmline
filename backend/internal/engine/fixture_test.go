@@ -5,7 +5,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/seed"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/seed"
 )
 
 // loadFixture reads the real dataset from /data (the same CSVs the app is seeded with).

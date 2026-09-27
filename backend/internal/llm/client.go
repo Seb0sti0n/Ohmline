@@ -20,8 +20,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/config"
-	"github.com/Seb0sti0n/astrophage/backend/internal/engine"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/config"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/engine"
 )
 
 type Client struct {

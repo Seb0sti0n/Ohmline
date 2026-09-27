@@ -14,7 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/Seb0sti0n/astrophage/backend/migrations"
+	"github.com/Seb0sti0n/Ohmline/backend/migrations"
 )
 
 const (

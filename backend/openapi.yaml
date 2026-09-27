@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Astrophage API
+  title: Ohmline API
   version: 0.1.0
   description: >
     AI energy management MVP. All endpoints except /health and /auth/login require

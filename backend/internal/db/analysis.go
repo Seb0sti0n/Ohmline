@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/engine"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/engine"
 )
 
 // Run is an analysis run as exposed by the API.

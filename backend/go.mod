@@ -1,4 +1,4 @@
-module github.com/Seb0sti0n/astrophage/backend
+module github.com/Seb0sti0n/Ohmline/backend
 
 go 1.24.0
 

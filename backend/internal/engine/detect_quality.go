@@ -4,7 +4,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/config"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/config"
 )
 
 // Flag kinds raised on a single reading.

@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/config"
-	"github.com/Seb0sti0n/astrophage/backend/internal/db"
-	"github.com/Seb0sti0n/astrophage/backend/internal/engine"
-	"github.com/Seb0sti0n/astrophage/backend/internal/llm"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/config"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/db"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/engine"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/llm"
 )
 
 // StepNames are the visible pipeline stages, in order.

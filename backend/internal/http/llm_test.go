@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/config"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/config"
 )
 
 const fakeAnswer = `{"reason":"Frase del modelo sobre el 12 sep.","explanation":"Explicación del modelo. Ventana de 14 h.","recommended_action":"Acción del modelo."}`

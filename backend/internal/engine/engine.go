@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/config"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/config"
 )
 
 // qualityOngoingHours: a quality problem is "ongoing" if its last flag is this close to the end of the data.

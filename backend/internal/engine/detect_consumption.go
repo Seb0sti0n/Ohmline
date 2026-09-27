@@ -3,7 +3,7 @@ package engine
 import (
 	"math"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/config"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/config"
 )
 
 // Window is a persistent consumption change: a run of consecutive hours whose robust z-score

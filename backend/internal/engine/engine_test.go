@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/config"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/config"
 )
 
 func runReal(t *testing.T, mutate func([]Event) []Event) map[string]AnomalyResult {

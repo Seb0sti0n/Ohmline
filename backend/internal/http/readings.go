@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/engine"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/engine"
 )
 
 // readingPoint is one point of a meter series with the expected (baseline) values for the same

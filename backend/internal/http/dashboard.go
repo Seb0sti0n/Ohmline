@@ -6,8 +6,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/db"
-	"github.com/Seb0sti0n/astrophage/backend/internal/engine"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/db"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/engine"
 )
 
 const topPriorities = 4

@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/db"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/db"
 )
 
 var (

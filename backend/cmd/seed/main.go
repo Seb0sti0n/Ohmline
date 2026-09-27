@@ -7,9 +7,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/config"
-	"github.com/Seb0sti0n/astrophage/backend/internal/db"
-	"github.com/Seb0sti0n/astrophage/backend/internal/seed"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/config"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/db"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/seed"
 )
 
 func main() {

@@ -14,11 +14,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/analysis"
-	"github.com/Seb0sti0n/astrophage/backend/internal/config"
-	"github.com/Seb0sti0n/astrophage/backend/internal/db"
-	"github.com/Seb0sti0n/astrophage/backend/internal/llm"
-	"github.com/Seb0sti0n/astrophage/backend/internal/seed"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/analysis"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/config"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/db"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/llm"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/seed"
 )
 
 const testSecret = "test-secret"

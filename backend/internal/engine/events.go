@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/config"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/config"
 )
 
 const (

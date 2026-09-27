@@ -3,7 +3,7 @@ package engine
 import (
 	"math"
 
-	"github.com/Seb0sti0n/astrophage/backend/internal/config"
+	"github.com/Seb0sti0n/Ohmline/backend/internal/config"
 )
 
 // Change describes how one electrical variable moved inside an anomalous window versus baseline.
