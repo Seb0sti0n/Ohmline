@@ -5,14 +5,14 @@ defineProps<{ to: string; label: string }>()
 <template>
   <RouterLink
     :to="to"
-    class="inline-flex h-8 items-center gap-1.5 self-start text-[15px] font-semibold text-brand no-underline hover:text-brand-strong"
+    class="inline-flex h-12 items-center gap-2.5 self-start rounded-md bg-brand px-[22px] text-[16px] leading-5 font-semibold text-white no-underline hover:bg-brand-strong"
   >
     <svg
       width="16"
       height="16"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="currentColor"
+      stroke="#FFFFFF"
       stroke-width="1.8"
       stroke-linecap="round"
       stroke-linejoin="round"
@@ -20,6 +20,6 @@ defineProps<{ to: string; label: string }>()
     >
       <path d="M15 5l-7 7 7 7" />
     </svg>
-    {{ label }}
+    <span>{{ label }}</span>
   </RouterLink>
 </template>

@@ -89,7 +89,7 @@ const result = computed(() => resultText(props.run))
       <p class="text-[17px] font-semibold text-brand-strong">{{ result }}</p>
       <RouterLink
         to="/anomalies"
-        class="inline-flex h-11 items-center text-[15px] font-semibold text-brand no-underline hover:text-brand-strong"
+        class="inline-flex h-11 items-center text-[15px] font-semibold text-brand no-underline hover:text-brand-strong leading-5"
       >
         Ver anomalías
       </RouterLink>

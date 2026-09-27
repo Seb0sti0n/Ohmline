@@ -139,7 +139,7 @@ Vue 3 + Vite + TypeScript, Pinia, Vue Router, Tailwind v4 and ECharts. The UI fo
 
 Screens: login (demo credentials prefilled), the dashboard (analysis card with the 7-stage stepper, KPI
 strip, daily consumption chart with baseline, "Qué atender primero", meter status tiles) and the meters table
-(status filters with counters, `meter_id` search, sort by consumption / variation / status, 14-day sparklines).
+(status filters with counters, search by meter code, sort by consumption / variation / status, 14-day sparklines).
 Filters, search and sorting are sent to the API (`GET /meters?status=&search=&sort=&order=`); the counters come from
 an unfiltered request.
 

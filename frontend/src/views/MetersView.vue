@@ -42,7 +42,7 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
         :key="f.key"
         type="button"
         :aria-pressed="meters.filter === f.key"
-        class="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border px-4 text-[15px] font-semibold"
+        class="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border px-4 text-[15px] font-semibold leading-5"
         :class="
           meters.filter === f.key
             ? 'border-ink bg-ink text-white'
@@ -74,12 +74,12 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
         <circle cx="11" cy="11" r="7" />
         <path d="m20 20-4-4" />
       </svg>
-      <span class="sr-only">Buscar por meter_id</span>
+      <span class="sr-only">Buscar por código de medidor</span>
       <input
         v-model="searchText"
         type="search"
-        placeholder="Buscar por meter_id"
-        class="grow border-0 bg-transparent text-[15px] text-ink outline-none"
+        placeholder="Buscar por código de medidor"
+        class="h-full min-w-0 grow border-0 bg-transparent p-0 text-[15px] leading-5 text-ink outline-none"
         @input="onSearch"
       />
     </label>
@@ -102,7 +102,7 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
       @sort="meters.toggleSort"
     />
     <p v-if="meters.rows.length === 0" class="px-7 py-7 text-body text-ink-muted">
-      Ningún medidor coincide con la búsqueda. Revisa el meter_id o cambia el filtro.
+      Ningún medidor coincide con la búsqueda. Revisa el código o cambia el filtro.
     </p>
   </section>
 </template>

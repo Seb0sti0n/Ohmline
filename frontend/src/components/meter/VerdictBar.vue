@@ -55,14 +55,14 @@ const text = computed(() => {
     <RouterLink
       v-if="anomaly"
       :to="`/anomalies/${anomaly.id}`"
-      class="inline-flex h-11 shrink-0 items-center rounded-md bg-white px-[18px] text-[15px] font-semibold text-ink no-underline hover:opacity-90"
+      class="inline-flex h-11 shrink-0 items-center rounded-md bg-white px-[18px] text-[15px] font-semibold text-ink no-underline hover:opacity-90 leading-5"
     >
       Ver investigación
     </RouterLink>
     <RouterLink
       v-else-if="!analysed"
       to="/"
-      class="inline-flex h-11 shrink-0 items-center rounded-md bg-white px-[18px] text-[15px] font-semibold text-ink no-underline hover:opacity-90"
+      class="inline-flex h-11 shrink-0 items-center rounded-md bg-white px-[18px] text-[15px] font-semibold text-ink no-underline hover:opacity-90 leading-5"
     >
       Ir al resumen
     </RouterLink>

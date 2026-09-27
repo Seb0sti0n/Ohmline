@@ -72,7 +72,7 @@ const cell = 'border-b border-line px-4 py-[18px] align-top text-body'
           <div class="flex flex-col items-start gap-2">
             <RouterLink
               :to="`/anomalies/${a.id}`"
-              class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-[9px] border px-3.5 text-[14px] font-semibold no-underline"
+              class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-[9px] border px-3.5 text-[14px] font-semibold leading-5 no-underline"
               :class="
                 a.severity === 'HIGH'
                   ? 'border-brand bg-brand text-white hover:bg-brand-strong'

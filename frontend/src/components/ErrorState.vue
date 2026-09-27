@@ -11,7 +11,7 @@ defineEmits<{ retry: [] }>()
     <p class="text-body font-semibold text-status-critical">{{ message }}</p>
     <button
       type="button"
-      class="h-11 cursor-pointer rounded-md border border-line bg-surface px-4 text-[15px] font-semibold hover:bg-surface-muted"
+      class="h-11 cursor-pointer rounded-md border border-line bg-surface px-4 text-[15px] font-semibold hover:bg-surface-muted leading-5"
       @click="$emit('retry')"
     >
       Reintentar

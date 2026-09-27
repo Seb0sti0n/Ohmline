@@ -46,7 +46,7 @@ const subtitle = computed(() => {
     </p>
     <RouterLink
       to="/anomalies"
-      class="inline-flex h-11 items-center rounded-md bg-brand px-4 text-[15px] font-semibold text-white no-underline hover:bg-brand-strong"
+      class="inline-flex h-11 items-center rounded-md bg-brand px-4 text-[15px] font-semibold text-white no-underline hover:bg-brand-strong leading-5"
       >Ver anomalías</RouterLink
     >
   </section>

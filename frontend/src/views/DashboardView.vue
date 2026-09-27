@@ -42,7 +42,7 @@ const subtitle = computed(() => {
     <button
       type="button"
       :disabled="analysis.isRunning || !summary"
-      class="inline-flex h-12 cursor-pointer items-center gap-2.5 rounded-md bg-brand px-[22px] text-[16px] font-semibold text-white hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-70"
+      class="inline-flex h-12 cursor-pointer items-center gap-2.5 rounded-md bg-brand px-[22px] text-[16px] font-semibold text-white hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-70 leading-5"
       @click="analysis.start()"
     >
       <svg

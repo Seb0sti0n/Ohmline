@@ -36,7 +36,7 @@ function logout() {
         <a
           :href="href"
           :aria-current="(item.exact ? isExactActive : isActive) ? 'page' : undefined"
-          class="flex h-11 items-center gap-3 rounded-sm px-3.5 text-[15px] no-underline"
+          class="flex h-11 items-center gap-3 rounded-sm px-3.5 text-[15px] no-underline leading-5"
           :class="
             (item.exact ? isExactActive : isActive)
               ? 'bg-sidebar-active font-semibold text-white'

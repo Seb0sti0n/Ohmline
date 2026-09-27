@@ -15,7 +15,7 @@ defineEmits<{ set: [status: AnomalyStatus] }>()
         v-if="anomaly.status === 'OPEN'"
         type="button"
         :disabled="updating"
-        class="h-11 grow cursor-pointer rounded-md bg-brand-on-dark text-[15px] font-[650] text-ink hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+        class="h-11 grow cursor-pointer rounded-md bg-brand-on-dark text-[15px] font-[650] text-ink hover:opacity-90 disabled:cursor-wait disabled:opacity-60 leading-5"
         @click="$emit('set', 'ACKNOWLEDGED')"
       >
         Marcar en investigación
@@ -24,7 +24,7 @@ defineEmits<{ set: [status: AnomalyStatus] }>()
         v-else-if="anomaly.status === 'ACKNOWLEDGED'"
         type="button"
         disabled
-        class="h-11 grow rounded-md bg-brand-on-dark text-[15px] font-[650] text-ink opacity-60"
+        class="h-11 grow rounded-md bg-brand-on-dark text-[15px] font-[650] text-ink opacity-60 leading-5"
       >
         En investigación
       </button>
@@ -32,7 +32,7 @@ defineEmits<{ set: [status: AnomalyStatus] }>()
         v-else
         type="button"
         :disabled="updating"
-        class="h-11 grow cursor-pointer rounded-md bg-brand-on-dark text-[15px] font-[650] text-ink hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+        class="h-11 grow cursor-pointer rounded-md bg-brand-on-dark text-[15px] font-[650] text-ink hover:opacity-90 disabled:cursor-wait disabled:opacity-60 leading-5"
         @click="$emit('set', 'OPEN')"
       >
         Reabrir
@@ -42,7 +42,7 @@ defineEmits<{ set: [status: AnomalyStatus] }>()
         v-if="anomaly.status !== 'RESOLVED'"
         type="button"
         :disabled="updating"
-        class="h-11 cursor-pointer rounded-md border border-ink-muted bg-transparent px-4 text-[15px] font-semibold text-white hover:bg-sidebar-active disabled:cursor-wait disabled:opacity-60"
+        class="h-11 cursor-pointer rounded-md border border-ink-muted bg-transparent px-4 text-[15px] font-semibold text-white hover:bg-sidebar-active disabled:cursor-wait disabled:opacity-60 leading-5"
         @click="$emit('set', 'RESOLVED')"
       >
         Resolver

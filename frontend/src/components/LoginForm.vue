@@ -46,7 +46,7 @@ async function submit() {
         type="email"
         autocomplete="username"
         required
-        class="h-12 w-full rounded-md border border-line bg-surface px-3.5 text-[16px] font-normal text-ink"
+        class="h-12 w-full rounded-md border border-line bg-surface px-3.5 text-[16px] font-normal text-ink leading-5"
       />
     </label>
 
@@ -57,7 +57,7 @@ async function submit() {
         type="password"
         autocomplete="current-password"
         required
-        class="h-12 w-full rounded-md border border-line bg-surface px-3.5 text-[16px] font-normal text-ink"
+        class="h-12 w-full rounded-md border border-line bg-surface px-3.5 text-[16px] font-normal text-ink leading-5"
       />
     </label>
 
