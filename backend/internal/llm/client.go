@@ -166,9 +166,19 @@ func (c *Client) attempt(ctx context.Context, system, user string, allowed *numb
 	return parseAndValidate(cr.Choices[0].Message.Content, allowed)
 }
 
-// Enhance rewrites the explanation of every result in place, in parallel. A result whose call
-// fails validation keeps its template text. It returns how many were written by the model.
-// Classification, severity, priority and confidence are never touched.
+// enhanceStagger is the delay between the dispatch of one call and the next. Free-tier providers
+// share one small token-per-minute budget across every anomaly's call; without a stagger they are
+// all sent in the same instant and race for it with equal odds. Callers pass results already
+// sorted by priority (engine.Run does this), so a short head start for index 0 is enough to make it
+// consistently the first to reach the server and be admitted, at the cost of only tens to a few
+// hundred milliseconds of extra wall-clock time overall.
+const enhanceStagger = 100 * time.Millisecond
+
+// Enhance rewrites the explanation of every result in place. Calls run concurrently but are
+// dispatched in the given order (highest priority first), so if the provider's shared rate limit
+// only admits some of them, it is the lower-priority ones that fall back to the template. A result
+// whose call fails validation keeps its template text. It returns how many were written by the
+// model. Classification, severity, priority and confidence are never touched.
 func (c *Client) Enhance(ctx context.Context, results []engine.AnomalyResult) int {
 	if !c.Enabled() {
 		return 0
@@ -177,8 +187,13 @@ func (c *Client) Enhance(ctx context.Context, results []engine.AnomalyResult) in
 	var n atomic.Int32
 	for i := range results {
 		wg.Add(1)
-		go func(r *engine.AnomalyResult) {
+		go func(i int, r *engine.AnomalyResult) {
 			defer wg.Done()
+			select {
+			case <-time.After(time.Duration(i) * enhanceStagger):
+			case <-ctx.Done():
+				return
+			}
 			rw, err := c.Explain(ctx, *r)
 			if err != nil {
 				log.Printf("llm: %s: %v (using template)", r.MeterID, err)
@@ -187,7 +202,7 @@ func (c *Client) Enhance(ctx context.Context, results []engine.AnomalyResult) in
 			r.Reason, r.Explanation, r.RecommendedAction = rw.Reason, rw.Explanation, rw.RecommendedAction
 			r.ExplanationSource = engine.SourceLLM
 			n.Add(1)
-		}(&results[i])
+		}(i, &results[i])
 	}
 	wg.Wait()
 	return int(n.Load())

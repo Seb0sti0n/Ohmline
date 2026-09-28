@@ -1,7 +1,9 @@
 package llm
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -61,9 +63,9 @@ func newFakeAPI(t *testing.T, handler func(call int, w http.ResponseWriter, r *h
 	f := &fakeAPI{}
 	f.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		n := int(f.calls.Add(1))
-		var body json.RawMessage
-		_ = json.NewDecoder(r.Body).Decode(&body)
-		f.last.Store(string(body))
+		raw, _ := io.ReadAll(r.Body)
+		r.Body = io.NopCloser(bytes.NewReader(raw)) // restore it: handler may want to read it too
+		f.last.Store(string(raw))
 		if r.URL.Path != "/chat/completions" || r.Method != http.MethodPost {
 			http.NotFound(w, r)
 			return

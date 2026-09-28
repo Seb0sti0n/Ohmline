@@ -2,9 +2,11 @@ package llm
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -276,5 +278,65 @@ func TestEnhanceRunsInParallel(t *testing.T) {
 	}
 	if d := time.Since(t0); d > 600*time.Millisecond {
 		t.Errorf("4 calls of 200 ms took %v: they should run in parallel", d)
+	}
+}
+
+// namedResult is sampleResult with a distinct meter and priority, for tests that check the order
+// several anomalies are handled in. Enhance does not sort: it trusts the order it is given, which is
+// engine.Run's priority order in production.
+func namedResult(id string, priority float64) engine.AnomalyResult {
+	r := sampleResult()
+	r.MeterID, r.PriorityScore = id, priority
+	return r
+}
+
+func TestEnhanceDispatchesInTheGivenOrder(t *testing.T) {
+	var mu sync.Mutex
+	var arrived []string
+	f := newFakeAPI(t, func(_ int, w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		for _, id := range []string{"M-109", "M-112", "M-104", "M-106"} {
+			if strings.Contains(string(body), id) {
+				arrived = append(arrived, id)
+				break
+			}
+		}
+		mu.Unlock()
+		reply(goodContent)(0, w, r)
+	})
+	rs := []engine.AnomalyResult{namedResult("M-109", 100), namedResult("M-112", 72), namedResult("M-104", 47), namedResult("M-106", 19)}
+	if n := f.client().Enhance(context.Background(), rs); n != 4 {
+		t.Fatalf("enhanced %d, want 4", n)
+	}
+	want := []string{"M-109", "M-112", "M-104", "M-106"}
+	if !reflect.DeepEqual(arrived, want) {
+		t.Errorf("arrival order = %v, want %v (the priority order it was given)", arrived, want)
+	}
+}
+
+// Free-tier providers share one small budget across every call in an analysis. If it only admits
+// some of them, the highest-priority anomalies (first in the slice, as engine.Run orders them) must
+// be the ones that get the AI explanation, not whichever happened to win the race.
+func TestEnhancePrioritizesUnderALimitedBudget(t *testing.T) {
+	const budget = 2 // only the first two arrivals are served; the rest are rate-limited
+	f := newFakeAPI(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		if n > budget {
+			w.Header().Set("Retry-After", "60") // long enough that Explain gives up rather than waiting
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		reply(goodContent)(n, w, r)
+	})
+	rs := []engine.AnomalyResult{namedResult("M-109", 100), namedResult("M-112", 72), namedResult("M-104", 47), namedResult("M-106", 19)}
+	if n := f.client().Enhance(context.Background(), rs); n != budget {
+		t.Fatalf("enhanced %d, want %d", n, budget)
+	}
+	for i, r := range rs {
+		wantLLM := i < budget
+		gotLLM := r.ExplanationSource == engine.SourceLLM
+		if gotLLM != wantLLM {
+			t.Errorf("%s (priority %.0f): got LLM=%v, want %v", r.MeterID, r.PriorityScore, gotLLM, wantLLM)
+		}
 	}
 }
