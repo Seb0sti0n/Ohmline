@@ -21,8 +21,8 @@ describe('auth store', () => {
     login.mockResolvedValue({ token: 'jwt-123', user: { email: 'demo@energy.io' } })
     const auth = useAuthStore()
     expect(auth.isAuthenticated).toBe(false)
-    await auth.login('demo@energy.io', 'demo123')
-    expect(login).toHaveBeenCalledWith('demo@energy.io', 'demo123')
+    await auth.login('demo@energy.io', 'Ohmline#2026')
+    expect(login).toHaveBeenCalledWith('demo@energy.io', 'Ohmline#2026')
     expect(auth.isAuthenticated).toBe(true)
     expect(getToken()).toBe('jwt-123')
 
@@ -42,7 +42,7 @@ describe('auth store', () => {
   it('logout clears everything', async () => {
     login.mockResolvedValue({ token: 'jwt-123', user: { email: 'demo@energy.io' } })
     const auth = useAuthStore()
-    await auth.login('demo@energy.io', 'demo123')
+    await auth.login('demo@energy.io', 'Ohmline#2026')
     auth.logout()
     expect(auth.isAuthenticated).toBe(false)
     expect(auth.email).toBe('')

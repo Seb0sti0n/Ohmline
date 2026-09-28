@@ -10,7 +10,7 @@ const router = useRouter()
 
 // The demo credentials come prefilled (see design/DESIGN.md).
 const email = ref('demo@energy.io')
-const password = ref('demo123')
+const password = ref('Ohmline#2026')
 const submitting = ref(false)
 const error = ref('')
 

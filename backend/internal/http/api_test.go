@@ -80,7 +80,7 @@ func newEnvLLM(t *testing.T, stepDelay time.Duration, llmCfg config.LLM) *testEn
 	store := db.NewStore(pool)
 	env := &testEnv{t: t, store: store, router: NewServer(store, analysis.NewRunner(store, cfg, llm.New(cfg.LLM)), cfg).Router()}
 
-	code, body := env.do("POST", "/api/auth/login", `{"email":"demo@energy.io","password":"demo123"}`, "")
+	code, body := env.do("POST", "/api/auth/login", `{"email":"demo@energy.io","password":"Ohmline#2026"}`, "")
 	if code != 200 {
 		t.Fatalf("login failed: %d %s", code, body)
 	}

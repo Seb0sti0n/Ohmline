@@ -19,7 +19,7 @@ import (
 
 const (
 	DemoEmail    = "demo@energy.io"
-	DemoPassword = "demo123"
+	DemoPassword = "Ohmline#2026"
 )
 
 // profiles are the demo names and locations of the meters (from the approved design). A meter that

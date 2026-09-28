@@ -27,7 +27,7 @@ describe('LoginForm', () => {
   it('comes prefilled with the demo credentials', () => {
     const w = mount(LoginForm)
     expect((w.find('input[type=email]').element as HTMLInputElement).value).toBe('demo@energy.io')
-    expect((w.find('input[type=password]').element as HTMLInputElement).value).toBe('demo123')
+    expect((w.find('input[type=password]').element as HTMLInputElement).value).toBe('Ohmline#2026')
   })
 
   it('logs in and goes to the dashboard', async () => {
@@ -35,7 +35,7 @@ describe('LoginForm', () => {
     const w = mount(LoginForm)
     await w.find('form').trigger('submit')
     await flushPromises()
-    expect(login).toHaveBeenCalledWith('demo@energy.io', 'demo123')
+    expect(login).toHaveBeenCalledWith('demo@energy.io', 'Ohmline#2026')
     expect(push).toHaveBeenCalledWith({ name: 'dashboard' })
     expect(w.find('[role=alert]').exists()).toBe(false)
   })
