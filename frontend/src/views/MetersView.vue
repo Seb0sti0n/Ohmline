@@ -66,7 +66,7 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
     </div>
 
     <label
-      class="flex h-11 w-[300px] items-center gap-2.5 rounded-md border border-line bg-surface px-3.5 text-ink-muted"
+      class="search-field flex h-11 w-[300px] items-center gap-2.5 rounded-md border border-line bg-surface px-3.5 text-ink-muted"
     >
       <svg
         width="18"
@@ -131,3 +131,16 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
     />
   </section>
 </template>
+
+<style scoped>
+/* The visible search box is this whole pill (icon + input), not just the <input> inside it, so the
+   focus ring belongs on the pill. Without this the browser's default focus outline draws around the
+   bare input only, which looks like a stray, partial highlight instead of one field lighting up. */
+.search-field:focus-within {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+.search-field input:focus-visible {
+  outline: none;
+}
+</style>
